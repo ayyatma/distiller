@@ -82,6 +82,8 @@ class PythonLogger(DataLogger):
         for name, val in stats_dict.items():
             if isinstance(val, int):
                 log = log + '{name} {val}    '.format(name=name, val=distiller.pretty_int(val))
+            elif isinstance(val, str):
+                log = log + '{name} {val}    '.format(name=name, val=val)
             else:
                 log = log + '{name} {val:.6f}    '.format(name=name, val=val)
         self.pylogger.info(log)

@@ -39,8 +39,8 @@ import torch.nn as nn
 import distiller
 
 
-__all__ = ['resnet20_cifar_earlyexit', 'resnet32_cifar_earlyexit', 'resnet44_cifar_earlyexit',
-           'resnet56_cifar_earlyexit', 'resnet110_cifar_earlyexit', 'resnet1202_cifar_earlyexit']
+__all__ = ['resnet20_cifar_earlyexit_classbased', 'resnet32_cifar_earlyexit_classbased', 'resnet44_cifar_earlyexit_classbased',
+           'resnet56_cifar_earlyexit_classbased', 'resnet110_cifar_earlyexit_classbased', 'resnet1202_cifar_earlyexit_classbased']
 
 NUM_CLASSES = 10
 
@@ -51,21 +51,20 @@ def conv3x3(in_planes, out_planes, stride=1):
 
 
 def get_exits_def():
-    # exits_def = [('layer1', nn.Sequential(nn.AvgPool2d(3),
-    #                                               nn.Flatten(),
-    #                                               nn.Linear(1600, NUM_CLASSES))),
-    #              ('layer2', nn.Sequential(nn.AvgPool2d(3),
-    #                                               nn.Flatten(),
-    #                                               nn.Linear(800, NUM_CLASSES)))]
-
-    exits_def = [('layer1.2.relu2', nn.Sequential(nn.AvgPool2d(3),
+    exits_def = [('layer1', nn.Sequential(nn.AvgPool2d(3),
                                                   nn.Flatten(),
-                                                  nn.Linear(1600, NUM_CLASSES)))]
+                                                  nn.Linear(1600, NUM_CLASSES))),
+                 ('layer2', nn.Sequential(nn.AvgPool2d(3),
+                                                  nn.Flatten(),
+                                                  nn.Linear(800, NUM_CLASSES)))]
+    # exits_def = [('layer1.2.relu2', nn.Sequential(nn.AvgPool2d(3),
+    #                                               nn.Flatten(),
+    #                                               nn.Linear(1600, NUM_CLASSES)))]
     return exits_def
 
 
 
-class ResNetCifarEarlyExit(ResNetCifar):
+class ResNetCifarEarlyExitClassBased(ResNetCifar):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ee_mgr = distiller.EarlyExitMgr()
@@ -79,26 +78,26 @@ class ResNetCifarEarlyExit(ResNetCifar):
         return outputs
 
 
-def resnet20_cifar_earlyexit(**kwargs):
-    model = ResNetCifarEarlyExit(BasicBlock, [3, 3, 3], **kwargs)
+def resnet20_cifar_earlyexit_classbased(**kwargs):
+    model = ResNetCifarEarlyExitClassBased(BasicBlock, [3, 3, 3], **kwargs)
     return model
 
-def resnet32_cifar_earlyexit(**kwargs):
-    model = ResNetCifarEarlyExit(BasicBlock, [5, 5, 5], **kwargs)
+def resnet32_cifar_earlyexit_classbased(**kwargs):
+    model = ResNetCifarEarlyExitClassBased(BasicBlock, [5, 5, 5], **kwargs)
     return model
 
-def resnet44_cifar_earlyexit(**kwargs):
-    model = ResNetCifarEarlyExit(BasicBlock, [7, 7, 7], **kwargs)
+def resnet44_cifar_earlyexit_classbased(**kwargs):
+    model = ResNetCifarEarlyExitClassBased(BasicBlock, [7, 7, 7], **kwargs)
     return model
 
-def resnet56_cifar_earlyexit(**kwargs):
-    model = ResNetCifarEarlyExit(BasicBlock, [9, 9, 9], **kwargs)
+def resnet56_cifar_earlyexit_classbased(**kwargs):
+    model = ResNetCifarEarlyExitClassBased(BasicBlock, [9, 9, 9], **kwargs)
     return model
 
-def resnet110_cifar_earlyexit(**kwargs):
-    model = ResNetCifarEarlyExit(BasicBlock, [18, 18, 18], **kwargs)
+def resnet110_cifar_earlyexit_classbased(**kwargs):
+    model = ResNetCifarEarlyExitClassBased(BasicBlock, [18, 18, 18], **kwargs)
     return model
 
-def resnet1202_cifar_earlyexit(**kwargs):
-    model = ResNetCifarEarlyExit(BasicBlock, [200, 200, 200], **kwargs)
+def resnet1202_cifar_earlyexit_classbased(**kwargs):
+    model = ResNetCifarEarlyExitClassBased(BasicBlock, [200, 200, 200], **kwargs)
     return model
