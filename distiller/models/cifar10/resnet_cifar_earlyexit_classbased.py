@@ -53,10 +53,10 @@ def conv3x3(in_planes, out_planes, stride=1):
 def get_exits_def():
     exits_def = [('layer1', nn.Sequential(nn.AvgPool2d(3),
                                                   nn.Flatten(),
-                                                  nn.Linear(1600, NUM_CLASSES))),
+                                                  nn.Linear(1600, 3))),
                  ('layer2', nn.Sequential(nn.AvgPool2d(3),
                                                   nn.Flatten(),
-                                                  nn.Linear(800, NUM_CLASSES)))]
+                                                  nn.Linear(800, 3)))]
     # exits_def = [('layer1.2.relu2', nn.Sequential(nn.AvgPool2d(3),
     #                                               nn.Flatten(),
     #                                               nn.Linear(1600, NUM_CLASSES)))]

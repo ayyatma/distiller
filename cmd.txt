@@ -1,0 +1,3 @@
+python compress_classifier.py --arch=resnet32_cifar_earlyexit_classbased --epochs=501 -b 128 --lr=0.003 \
+--earlyexit_thresholds 0.4 0.4 --earlyexit_lossweights 0.4 0.4 -j 30 --out-dir /home/ayyatma/Documents/GitHub/distiller/output \
+ -n earlyexit /home/ayyatma/Documents/GitHub/distiller/output/pcifar10

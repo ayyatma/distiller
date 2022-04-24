@@ -23,6 +23,7 @@ from .checkpoint import *
 from .execution_env import *
 from .dataset_summaries import *
 from .performance_tracker import *
+from .tensortest import *
 
 del data_loaders
 del checkpoint

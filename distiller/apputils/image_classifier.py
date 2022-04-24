@@ -28,20 +28,69 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
+import torch.distributions
 import parser
 from functools import partial
 import argparse
+
+from urllib3 import Retry
 import distiller
 import distiller.apputils as apputils
+from distiller.apputils.tensortest import ClassBasedCrossEntropyLoss
 from distiller.data_loggers import *
 import distiller.quantization as quantization
 import distiller.models as models
+import matplotlib.pyplot as plt
 from distiller.models import create_model
 from distiller.utils import float_range_argparse_checker as float_range
 
 # Logger handle
 msglogger = logging.getLogger()
 
+slabel = [[2], [2]]
+sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+            [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+weights = [[0.4, 0.4, 0.4], 
+            [0.4, 0.4, 0.4],
+            [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+# slabel = [[2], [4]]
+# sclass  =  [[2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+#             [4, 4, 0, 2, 3, 1, 4, 4, 4, 4],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [[0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+# slabel = [[3], [3]]
+# sclass  =  [[3, 3, 0, 3, 3, 1, 3, 3, 2, 3], 
+#             [0, 3, 3, 1, 3, 3, 3, 2, 3, 3],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [[0.4, 0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+
+# slabel = [[10], [10]]
+# sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [ [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+
+# slabel = [[0, 1, 3, 4, 6, 7, 8, 9], [0, 1, 2, 5, 6, 7, 8, 9]]
+# sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [ [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+
+plt_exit_samples = []
+plt_exit_samples_p = []
+plt_exit_accurac = []
+plt_exit_out_distrub = []
+plt_exit_tru_distrub = []
+plt_total_acc = []
 
 class ClassifierCompressor(object):
     """Base class for applications that want to compress image classifiers.
@@ -69,15 +118,26 @@ class ClassifierCompressor(object):
             self.pylogger = PythonLogger(msglogger)
         (self.model, self.compression_scheduler, self.optimizer, 
              self.start_epoch, self.ending_epoch) = _init_learner(self.args)
+        
+
+        num_exits = len(args.earlyexit_thresholds) + 1
+        # global plt_exit_samples, plt_exit_samples_p, plt_exit_accurac, plt_exit_out_distrub, plt_exit_tru_distrub
+        # plt_exit_samples = [[0] * num_exits]
+        # plt_exit_samples_p = [[0] * num_exits]
+        # plt_exit_accurac = [[0] * num_exits]
+        # plt_exit_out_distrub = [[0] * num_exits]
+        # plt_exit_tru_distrub = [[0] * num_exits]
 
         # Define loss function (criterion)
-        weights = [ [0.4, 0.1, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
-                    [0.4, 0.8, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
-                    [0.2, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
-        self.criterion = []
-        for i in range(3):
-            self.criterion.append(nn.CrossEntropyLoss(weight=torch.FloatTensor(weights[i])).to(self.args.device))
+        # weights = [ [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
+        #             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
+        #             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
+                          
         
+        self.criterion = []
+        for i in range(num_exits):
+            self.criterion.append(ClassBasedCrossEntropyLoss(class_weights=torch.FloatTensor(weights[i]), super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
+            
         self.train_loader, self.val_loader, self.test_loader = (None, None, None)
         self.activations_collectors = create_activation_stats_collectors(
             self.model, *self.args.activation_stats)
@@ -117,7 +177,7 @@ class ClassifierCompressor(object):
         self.load_datasets()
 
         with collectors_context(self.activations_collectors["train"]) as collectors:
-            top1, top5, loss = train(self.train_loader, self.model, self.criterion, self.optimizer, 
+            top1, loss = train(self.train_loader, self.model, self.criterion, self.optimizer, 
                                      epoch, self.compression_scheduler, 
                                      loggers=[self.tflogger, self.pylogger], args=self.args)
             if verbose:
@@ -127,26 +187,26 @@ class ClassifierCompressor(object):
             if self.args.masks_sparsity:
                 msglogger.info(distiller.masks_sparsity_tbl_summary(self.model, 
                                                                     self.compression_scheduler))
-        return top1, top5, loss
+        return top1, loss
 
     def train_validate_with_scheduling(self, epoch, validate=True, verbose=True):
         if self.compression_scheduler:
             self.compression_scheduler.on_epoch_begin(epoch)
 
-        top1, top5, loss = self.train_one_epoch(epoch, verbose)
+        top1, loss = self.train_one_epoch(epoch, verbose)
         if validate:
-            top1, top5, loss = self.validate_one_epoch(epoch, verbose)
+            top1, loss = self.validate_one_epoch(epoch, verbose)
 
         if self.compression_scheduler:
             self.compression_scheduler.on_epoch_end(epoch, self.optimizer, 
                                                     metrics={'min': loss, 'max': top1})
-        return top1, top5, loss
+        return top1, loss
 
     def validate_one_epoch(self, epoch, verbose=True):
         """Evaluate on validation set"""
         self.load_datasets()
         with collectors_context(self.activations_collectors["valid"]) as collectors:
-            top1, top5, vloss = validate(self.val_loader, self.model, self.criterion, 
+            top1, vloss = validate(self.val_loader, self.model, self.criterion, 
                                          [self.pylogger], self.args, epoch)
             distiller.log_activation_statistics(epoch, "valid", loggers=[self.tflogger],
                                                 collector=collectors["sparsity"])
@@ -155,15 +215,14 @@ class ClassifierCompressor(object):
         if verbose:
             stats = ('Performance/Validation/',
             OrderedDict([('Loss', vloss),
-                         ('Top1', top1),
-                         ('Top5', top5)]))
+                         ('Top1', top1)]))
             distiller.log_training_progress(stats, None, epoch, steps_completed=0,
                                             total_steps=1, log_freq=1, loggers=[self.tflogger])
-        return top1, top5, vloss
+        return top1, vloss
 
-    def _finalize_epoch(self, epoch, top1, top5):
+    def _finalize_epoch(self, epoch, top1):
         # Update the list of top scores achieved so far, and save the checkpoint
-        self.performance_tracker.step(self.model, epoch, top1=top1, top5=top5)
+        self.performance_tracker.step(self.model, epoch, top1=top1)
         _log_best_scores(self.performance_tracker, msglogger)
         best_score = self.performance_tracker.best_scores()[0]
         is_best = epoch == best_score.epoch
@@ -174,6 +233,59 @@ class ClassifierCompressor(object):
             apputils.save_checkpoint(epoch, self.args.arch, self.model, optimizer=self.optimizer,
                                      scheduler=self.compression_scheduler, extras=checkpoint_extras,
                                      is_best=is_best, name=self.args.name, dir=msglogger.logdir)
+
+    def plt_stats(self):
+        xsize = len(plt_exit_samples)
+        x = [i for i in range(0, xsize)]
+        plt.xlabel("Epochs")
+        plt.ylabel("Samples")
+        plt.title('Sample number over epochs')
+        for i in range(len(plt_exit_samples[0])):
+            plt.plot(x,[pt[i] for pt in plt_exit_samples],label = 'Exit %s'%i)
+        plt.legend()
+        plt.savefig(msglogger.logdir+'/p_samples_n.pdf')
+        plt.clf()
+
+        plt.xlabel("Epochs")
+        plt.ylabel("Samples %")
+        plt.title('Sample percent over epochs')
+        for i in range(len(plt_exit_samples_p[0])):
+            plt.plot(x,[pt[i] for pt in plt_exit_samples_p],label = 'Exit %s'%i)
+        plt.legend()
+        plt.savefig(msglogger.logdir+'/p_samples_p.pdf')
+        plt.clf()
+
+        plt.xlabel("Epochs")
+        plt.ylabel("Exit accuracy %")
+        plt.title('Exit accuracy over epochs')
+        for i in range(len(plt_exit_accurac[0])):
+            plt.plot(x,[pt[i] for pt in plt_exit_accurac],label = 'Exit %s'%i)
+        plt.plot(x, plt_total_acc, label = 'Overall')
+        plt.legend()
+        plt.savefig(msglogger.logdir+'/p_accuracy.pdf')
+        plt.clf()
+
+        for i in range(len(plt_exit_out_distrub[0])):
+            plt.xlabel("Epochs")
+            plt.ylabel("")
+            plt.title("Class distribution over exit: "+str(i))
+            for j in range(len(plt_exit_out_distrub[0][0])):
+                plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_out_distrub]],label = 'Class %s'%j)
+            plt.legend()
+            plt.savefig(msglogger.logdir+'/p_exit_out_dist'+str(i)+'.pdf')
+            plt.clf()
+        
+        for i in range(len(plt_exit_tru_distrub[0])):
+            plt.xlabel("Epochs")
+            plt.ylabel("")
+            plt.title("Class distribution over exit: "+str(i))
+            for j in range(len(plt_exit_tru_distrub[0][0])):
+                plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_tru_distrub]],label = 'Class %s'%j)
+            plt.legend()
+            plt.savefig(msglogger.logdir+'/p_exit_tru_dist'+str(i)+'.pdf')
+            plt.clf()
+
+
 
     def run_training_loop(self):
         """Run the main training loop with compression.
@@ -195,8 +307,10 @@ class ClassifierCompressor(object):
         self.performance_tracker.reset()
         for epoch in range(self.start_epoch, self.ending_epoch):
             msglogger.info('\n')
-            top1, top5, loss = self.train_validate_with_scheduling(epoch)
-            self._finalize_epoch(epoch, top1, top5)
+            top1, loss = self.train_validate_with_scheduling(epoch)
+            self._finalize_epoch(epoch, top1)
+            if epoch % 5 == 0 and epoch > 1:
+                self.plt_stats()
         return self.performance_tracker.perf_scores_history
 
     def validate(self, epoch=-1):
@@ -208,6 +322,7 @@ class ClassifierCompressor(object):
         self.load_datasets()
         return test(self.test_loader, self.model, self.criterion,
                     self.pylogger, self.activations_collectors, args=self.args)
+
 
 
 def init_classifier_compression_arg_parser(include_ptq_lapq_args=False):
@@ -522,12 +637,11 @@ def train(train_loader, model, criterion, optimizer, epoch,
         errs = OrderedDict()
         if not early_exit_mode(args):
             errs['Top1'] = classerr.value(1)
-            errs['Top5'] = classerr.value(5)
         else:
             # For Early Exit case, the Top1 and Top5 stats are computed for each exit.
             for exitnum in range(args.num_exits):
                 errs['Top1_exit' + str(exitnum)] = args.exiterrors[exitnum].value(1)
-                errs['Top5_exit' + str(exitnum)] = args.exiterrors[exitnum].value(5)
+                # errs['Top5_exit' + str(exitnum)] = args.exiterrors[exitnum].value(5)
 
         stats_dict = OrderedDict()
         for loss_name, meter in losses.items():
@@ -550,7 +664,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
     batch_time = tnt.AverageValueMeter()
     data_time = tnt.AverageValueMeter()
 
@@ -559,7 +673,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
     if early_exit_mode(args):
         args.exiterrors = []
         for exitnum in range(args.num_exits):
-            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, 5)))
+            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1,)))
 
     total_samples = len(train_loader.sampler)
     batch_size = train_loader.batch_size
@@ -640,7 +754,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
         end = time.time()
     #return acc_stats
     # NOTE: this breaks previous behavior, which returned a history of (top1, top5) values
-    return classerr.value(1), classerr.value(5), losses[OVERALL_LOSS_KEY]
+    return classerr.value(1), losses[OVERALL_LOSS_KEY]
 
 
 def validate(val_loader, model, criterion, loggers, args, epoch=-1):
@@ -661,10 +775,10 @@ def test(test_loader, model, criterion, loggers=None, activations_collectors=Non
         activations_collectors = create_activation_stats_collectors(model, None)
 
     with collectors_context(activations_collectors["test"]) as collectors:
-        top1, top5, lossses = _validate(test_loader, model, criterion, loggers, args)
+        top1, lossses = _validate(test_loader, model, criterion, loggers, args)
         distiller.log_activation_statistics(-1, "test", loggers, collector=collectors['sparsity'])
         save_collectors_data(collectors, msglogger.logdir)
-    return top1, top5, lossses
+    return top1, lossses
 
 
 # Temporary patch until we refactor early-exit handling
@@ -675,9 +789,7 @@ def _is_earlyexit(args):
 def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
     def _log_validation_progress():
         if not _is_earlyexit(args):
-            stats_dict = OrderedDict([('Loss', losses['objective_loss'].mean),
-                                      ('Top1', classerr.value(1)),
-                                      ('Top5', classerr.value(5))])
+            stats_dict = OrderedDict([('Loss', losses['objective_loss'].mean)])
         else:
             stats_dict = OrderedDict()
             for exitnum in range(args.num_exits):
@@ -686,11 +798,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
                 # Because of the nature of ClassErrorMeter, if an exit is never taken during the batch,
                 # then accessing the value(k) will cause a divide by zero. So we'll build the OrderedDict
                 # accordingly and we will not print for an exit error when that exit is never taken.
-                if args.exit_taken[exitnum]:
-                    t1 = 'Top1_exit' + str(exitnum)
-                    t5 = 'Top5_exit' + str(exitnum)
-                    stats_dict[t1] = args.exiterrors[exitnum].value(1)
-                    stats_dict[t5] = args.exiterrors[exitnum].value(5)
+                # if args.exit_taken[exitnum]:
+                #     t1 = 'Top1_exit' + str(exitnum)
+                #     stats_dict[t1] = args.exiterrors[exitnum].value(1)
                     # perd_distribution = 'distri_class' + str(exitnum)
                     # stats_dict[perd_distribution] = ''.join(str(args.preds[exitnum]))
                     # label_distribution = 'distri_label' + str(exitnum)
@@ -703,14 +813,14 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
 
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1,))
 
     if _is_earlyexit(args):
         # for Early Exit, we have a list of errors and losses for each of the exits.
         args.exiterrors = []
         args.losses_exits = []
         for exitnum in range(args.num_exits):
-            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, 5)))
+            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1,)))
             args.losses_exits.append(tnt.AverageValueMeter())
         args.exit_taken = [0] * args.num_exits
 
@@ -728,9 +838,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
     end = time.time()
     args.labels = []
     args.preds = []
+    args.matches = []
     for exitnum in range(args.num_exits):
         args.preds.append([])
         args.labels.append([])
+        args.matches.append(0)
         for classnum in range(args.num_classes):
             args.preds[exitnum].append(0)
             args.labels[exitnum].append(0)
@@ -760,15 +872,15 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
                 _log_validation_progress()
 
     if not _is_earlyexit(args):
-        msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
-                       classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+        msglogger.info('==> Top1: %.3f    Loss: %.3f\n',
+                       classerr.value()[0], losses['objective_loss'].mean)
 
         if args.display_confusion:
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
         return classerr.value(1), classerr.value(5), losses['objective_loss'].mean
     else:
-        total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
-        return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
+        total_top1, losses_exits_stats = earlyexit_validate_stats(args)
+        return total_top1, losses_exits_stats[args.num_exits-1]
 
 
 def inception_training_loss(output, target, criterion, args):
@@ -833,42 +945,27 @@ def earlyexit_loss(output, target, criterion, args):
     # weighted_loss += (1.0 - sum_lossweights) * criterion(output[args.num_exits-1], target)
     return weighted_loss
 
-# def earlyexit_loss(output, target, criterion, args):
-#     """Compute the weighted sum of the exits losses
-
-#     Note that the last exit is the original exit of the model (i.e. the
-#     exit that traverses the entire network.
-#     """
-#     weighted_loss = 0
-#     sum_lossweights = sum(args.earlyexit_lossweights)
-#     assert sum_lossweights < 1
-#     for exitnum in range(args.num_exits-1):
-#         if output[exitnum] is None:
-#             continue
-#         exit_loss = criterion(output[exitnum], target)
-#         weighted_loss += args.earlyexit_lossweights[exitnum] * exit_loss
-#         args.exiterrors[exitnum].add(output[exitnum].detach(), target)
-#     # handle final exit
-#     weighted_loss += (1.0 - sum_lossweights) * criterion(output[args.num_exits-1], target)
-#     args.exiterrors[args.num_exits-1].add(output[args.num_exits-1].detach(), target)
-#     return weighted_loss
 
 def earlyexit_validate(logits):
-    from scipy.stats import entropy
-    m = nn.Softmax(dim=0)
-    # p_tensor = torch.Tensor([0.1, 0.2, 0.4, 0.3])
-    entropies = []
-    for logit in logits:
-        # print(class_probabilities_sample)
-        output = m(logit)
-        # print(output)
+    
+    m = nn.Softmax(dim=1)
+    log = m(logits)
 
-        entropy1 = entropy(output.cpu().detach().numpy())
-        # print('entropy', entropy)
-        entropies.append(entropy1)
-    entropies = torch.FloatTensor(entropies)
+    e=torch.distributions.Categorical(probs=log)
+    output=e.entropy()
+    
+    return output 
+
+    # from scipy.stats import entropy
+    # m = nn.Softmax(dim=0)
+    # entropies = []
+    # for logit in logits:
+    #     output = m(logit)
+
+    #     entropy1 = entropy(output.cpu().detach().numpy())
+    #     entropies.append(entropy1)
+    # entropies = torch.FloatTensor(entropies)
     # print(entropies)
-    return entropies.cuda() 
 
 def earlyexit_validate_loss(output, target, criterion, args):
     # We need to go through each sample in the batch itself - in other words, we are
@@ -876,6 +973,7 @@ def earlyexit_validate_loss(output, target, criterion, args):
     # but with a grouping of samples equal to the batch size.
     # Note that final group might not be a full batch - so determine actual size.
     this_batch_size = target.size(0)
+    
     #earlyexit_validate_criterion = nn.CrossEntropyLoss(reduce=False).to(args.device)
 
     for exitnum in range(args.num_exits):
@@ -891,67 +989,85 @@ def earlyexit_validate_loss(output, target, criterion, args):
         for exitnum in range(args.num_exits - 1):
             if args.loss_exits[exitnum][batch_index] < args.earlyexit_thresholds[exitnum]:
                 # take the results from early exit since lower than threshold
-                args.exiterrors[exitnum].add(torch.tensor(np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)),
-                                             torch.full([1], target[batch_index], dtype=torch.long))
                 pred = np.argmax(np.array(output[exitnum].data[batch_index].cpu()))
-                args.preds[exitnum][pred] += 1
+                truepred = sclass[exitnum].index(pred)
+                # slabel2 = [[0, 1, 2], [4, 5, 6]]
+                # if sclass[exitnum][truepred]==slabel[exitnum]:
+                if sclass[exitnum][truepred] in slabel[exitnum]:                    
+                    continue
+                args.preds[exitnum][truepred] += 1
                 label = target[batch_index].cpu().item()
                 args.labels[exitnum][label] += 1
-                
+  
+                # args.exiterrors[exitnum].add(torch.tensor(np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)),
+                #                 torch.full([1], target[batch_index], dtype=torch.long))
+
+                args.matches[exitnum] += (truepred == label)
                 args.exit_taken[exitnum] += 1
                 earlyexit_taken = True
                 break                    # since exit was taken, do not affect the stats of subsequent exits
         # this sample does not exit early and therefore continues until final exit
         if not earlyexit_taken:
             exitnum = args.num_exits - 1
-            args.exiterrors[exitnum].add(torch.tensor(np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)),
-                                         torch.full([1], target[batch_index], dtype=torch.long))
+            # args.exiterrors[exitnum].add(torch.tensor(np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)),
+            #                              torch.full([1], target[batch_index], dtype=torch.long))
             pred = np.argmax(np.array(output[exitnum].data[batch_index].cpu()))
             args.preds[exitnum][pred] += 1
             label = target[batch_index].cpu().item()
             args.labels[exitnum][label] += 1
 
+            args.matches[exitnum] += (pred == label)
             args.exit_taken[exitnum] += 1
             
 
 def earlyexit_validate_stats(args):
     # Print some interesting summary stats for number of data points that could exit early
-    top1k_stats = [0] * args.num_exits
-    top5k_stats = [0] * args.num_exits
+    acc_stats = [0] * args.num_exits
     losses_exits_stats = [0] * args.num_exits
     sum_exit_stats = 0
     for exitnum in range(args.num_exits):
+        # msglogger.info("Exit %d: %d", exitnum, args.exit_taken[exitnum])
         if args.exit_taken[exitnum]:
             sum_exit_stats += args.exit_taken[exitnum]
-            msglogger.info("Exit %d: %d", exitnum, args.exit_taken[exitnum])
-            top1k_stats[exitnum] += args.exiterrors[exitnum].value(1)
-            top5k_stats[exitnum] += args.exiterrors[exitnum].value(5)
+            acc_stats[exitnum] += (args.matches[exitnum] / args.exit_taken[exitnum]) * 100
             losses_exits_stats[exitnum] += args.losses_exits[exitnum].mean
+    total_acc = 0
     for exitnum in range(args.num_exits):
-        if args.exit_taken[exitnum]:
-            msglogger.info("Percent Early Exit %d: %.3f", exitnum,
-                           (args.exit_taken[exitnum]*100.0) / sum_exit_stats)
-    total_top1 = 0
-    total_top5 = 0
-    for exitnum in range(args.num_exits):
-        total_top1 += (top1k_stats[exitnum] * (args.exit_taken[exitnum] / sum_exit_stats))
-        total_top5 += (top5k_stats[exitnum] * (args.exit_taken[exitnum] / sum_exit_stats))
-        msglogger.info("Accuracy Stats for exit %d: top1 = %.3f, top5 = %.3f", exitnum, top1k_stats[exitnum], top5k_stats[exitnum])
+        total_acc += (acc_stats[exitnum] * (args.exit_taken[exitnum] / sum_exit_stats))
+        exits = args.exit_taken[exitnum]
+        exits_p = (args.exit_taken[exitnum]*100.0) / sum_exit_stats
+        exit_acc = acc_stats[exitnum]
+
+        msglogger.info("Exit %d samples: %d, \tPercentage: %.3f, \tAccuracy: %.3f", exitnum, exits, 
+                        exits_p, exit_acc)
+
+
+    plt_exit_samples.append(args.exit_taken)
+    plt_exit_samples_p.append([i * 100 / sum_exit_stats for i in args.exit_taken])
+    # plt_exit_samples_p.append((args.exit_taken*100.0) / sum_exit_stats)
+    plt_exit_accurac.append(acc_stats)
+
+    plt_exit_out_distrub.append(args.preds)
+    plt_exit_tru_distrub.append(args.labels)
+    plt_total_acc.append(total_acc)
 
     for exitnum in range(args.num_exits):
         total = np.sum(args.preds[exitnum])
+        if total == 0:
+            msglogger.info("At exit %d NO samples left the model", exitnum)
+            continue
         preds = ["{0:0.2f}".format(i*100/total) for i in args.preds[exitnum]]
         labels = ["{0:0.2f}".format(i*100/total) for i in args.labels[exitnum]]
 
-        msglogger.info("At exit %d total samples: %d, \noutput distribution: %s, \ntrue distribution: %s", 
-            exitnum, total,''.join(str(args.preds[exitnum])), ''.join(str(args.labels[exitnum])))
+        msglogger.info("At exit %d output distribution: %s, \ntrue distribution: %s", 
+            exitnum,''.join(str(args.preds[exitnum])), ''.join(str(args.labels[exitnum])))
         
 
         msglogger.info("output percentage: %s, \ntrue percentage: %s", 
             ''.join(str(preds)), ''.join(str(labels)))
     
-    msglogger.info("Totals for entire network with early exits: top1 = %.3f, top5 = %.3f", total_top1, total_top5)
-    return total_top1, total_top5, losses_exits_stats
+    msglogger.info("Totals for entire network with early exits: top1 = %.3f", total_acc)
+    return total_acc, losses_exits_stats
 
 
 def _convert_ptq_to_pytorch(model, args):
@@ -1074,5 +1190,5 @@ def _log_best_scores(performance_tracker, logger, how_many=-1):
     how_many = min(how_many, performance_tracker.max_len)
     best_scores = performance_tracker.best_scores(how_many)
     for score in best_scores:
-        logger.info('==> Best [Top1: %.3f   Top5: %.3f   Sparsity:%.2f   NNZ-Params: %d on epoch: %d]',
-                    score.top1, score.top5, score.sparsity, -score.params_nnz_cnt, score.epoch)
+        logger.info('==> Best [Top1: %.3f   Sparsity:%.2f   NNZ-Params: %d on epoch: %d]',
+                    score.top1, score.sparsity, -score.params_nnz_cnt, score.epoch)
