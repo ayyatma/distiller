@@ -21,8 +21,14 @@ class ClassBasedCrossEntropyLoss(nn.Module):
         nll = nn.NLLLoss(weight=self.class_weights)
         # truetarget = torch.tensor(self.super_classes.index_select(0, target), dtype=torch.long, device='cuda')
         truetarget = self.super_classes.index_select(0, target).long()
-
         loss = nll(log_probabilities, truetarget)
+        
+
+        
+        indexedweights = self.class_weights.index_select(0, truetarget)
+        l2 = -indexedweights * log_probabilities.index_select(-1, truetarget).diag()
+        l3 = torch.sum(1/torch.sum(indexedweights) * l2)
+        
         # NLLLoss(x, class) = -weights[class] * x[class]
         # print(target)
         # print(truetarget)

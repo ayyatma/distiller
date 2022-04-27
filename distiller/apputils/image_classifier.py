@@ -36,7 +36,8 @@ import argparse
 from urllib3 import Retry
 import distiller
 import distiller.apputils as apputils
-from distiller.apputils.tensortest import ClassBasedCrossEntropyLoss
+from distiller.apputils.cel_vector import ClassBasedCrossEntropyLoss
+from distiller.apputils.cel_costadjusted import CostAdjustedCrossEntropyLoss
 from distiller.data_loggers import *
 import distiller.quantization as quantization
 import distiller.models as models
@@ -47,20 +48,28 @@ from distiller.utils import float_range_argparse_checker as float_range
 # Logger handle
 msglogger = logging.getLogger()
 
-slabel = [[2], [2]]
-sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
-            [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-weights = [[0.4, 0.4, 0.4], 
-            [0.4, 0.4, 0.4],
-            [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+# sname = "2-2"
+# exit_width = [3, 3]
+# slabel = [[2], [2]]
+# sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+#             [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [[0.4, 0.6, 0.9], 
+#             [0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
+
+#sname = "2-4top"  
+# exit_width = [3, 5]
 # slabel = [[2], [4]]
 # sclass  =  [[2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
 #             [4, 4, 0, 2, 3, 1, 4, 4, 4, 4],
 #             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
 # weights = [[0.4, 0.4, 0.4], 
 #             [0.4, 0.4, 0.4, 0.4, 0.4],
-#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
+  
+#sname = "3-3"
+# exit_width = [4, 4]
 # slabel = [[3], [3]]
 # sclass  =  [[3, 3, 0, 3, 3, 1, 3, 3, 2, 3], 
 #             [0, 3, 3, 1, 3, 3, 3, 2, 3, 3],
@@ -69,6 +78,8 @@ weights = [[0.4, 0.4, 0.4],
 #             [0.4, 0.4, 0.4, 0.4],
 #             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
 
+#sname="base"
+# exit_width = [10, 10]
 # slabel = [[10], [10]]
 # sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
 #             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -77,6 +88,7 @@ weights = [[0.4, 0.4, 0.4],
 #             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
 #             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
 
+# sname="2-2fake"
 # slabel = [[0, 1, 3, 4, 6, 7, 8, 9], [0, 1, 2, 5, 6, 7, 8, 9]]
 # sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
 #             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -85,6 +97,39 @@ weights = [[0.4, 0.4, 0.4],
 #             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
 #             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
 
+sname="_2-2cost_adjusted_"
+exit_width = [3, 3]
+slabel = [[2], [2]]
+sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+            [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+a = 0.4
+b = 0.8
+c = 4
+weights = [ [[a, b, c], [b, a, c], [b, b, a]], 
+            [[a, b, c], [b, a, c], [b, b, a]],
+            [[a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+            [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+            [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a]]]
+
+# sname = "2-2"
+# exit_width = [3, 3]
+# slabel = [[2], [2]]
+# sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+#             [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# c = 0.4
+# b = 0.4
+# a = 0.2
+# weights = [ [[c, c, c], [c, c, c], [c, c, c]], 
+#             [[b, b, b], [b, b, b], [b, b, b]],
+#             [[a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+#              [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+#              [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+#              [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+#              [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a]]]
+
+plt_total_samples = 0
 plt_exit_samples = []
 plt_exit_samples_p = []
 plt_exit_accurac = []
@@ -121,22 +166,11 @@ class ClassifierCompressor(object):
         
 
         num_exits = len(args.earlyexit_thresholds) + 1
-        # global plt_exit_samples, plt_exit_samples_p, plt_exit_accurac, plt_exit_out_distrub, plt_exit_tru_distrub
-        # plt_exit_samples = [[0] * num_exits]
-        # plt_exit_samples_p = [[0] * num_exits]
-        # plt_exit_accurac = [[0] * num_exits]
-        # plt_exit_out_distrub = [[0] * num_exits]
-        # plt_exit_tru_distrub = [[0] * num_exits]
 
         # Define loss function (criterion)
-        # weights = [ [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
-        #             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
-        #             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
-                          
-        
         self.criterion = []
         for i in range(num_exits):
-            self.criterion.append(ClassBasedCrossEntropyLoss(class_weights=torch.FloatTensor(weights[i]), super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
+            self.criterion.append(CostAdjustedCrossEntropyLoss(class_weights=torch.FloatTensor(weights[i]), super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
             
         self.train_loader, self.val_loader, self.test_loader = (None, None, None)
         self.activations_collectors = create_activation_stats_collectors(
@@ -236,53 +270,60 @@ class ClassifierCompressor(object):
 
     def plt_stats(self):
         xsize = len(plt_exit_samples)
+        total_samples = np.sum(plt_exit_samples)
         x = [i for i in range(0, xsize)]
         plt.xlabel("Epochs")
         plt.ylabel("Samples")
-        plt.title('Sample number over epochs')
+        plt.title('Sample number over epochs (scenario '+sname+')')
         for i in range(len(plt_exit_samples[0])):
             plt.plot(x,[pt[i] for pt in plt_exit_samples],label = 'Exit %s'%i)
         plt.legend()
-        plt.savefig(msglogger.logdir+'/p_samples_n.pdf')
+        plt.savefig(msglogger.logdir+'/p_samples_n' + sname+'.pdf')
         plt.clf()
 
         plt.xlabel("Epochs")
         plt.ylabel("Samples %")
-        plt.title('Sample percent over epochs')
+        plt.title('Sample percent over epochs (scenario '+sname+')')
         for i in range(len(plt_exit_samples_p[0])):
             plt.plot(x,[pt[i] for pt in plt_exit_samples_p],label = 'Exit %s'%i)
         plt.legend()
-        plt.savefig(msglogger.logdir+'/p_samples_p.pdf')
+        plt.savefig(msglogger.logdir+'/p_samples_p' + sname+'.pdf')
         plt.clf()
 
         plt.xlabel("Epochs")
         plt.ylabel("Exit accuracy %")
-        plt.title('Exit accuracy over epochs')
+        plt.title('Exit accuracy over epochs (scenario '+sname+')')
         for i in range(len(plt_exit_accurac[0])):
             plt.plot(x,[pt[i] for pt in plt_exit_accurac],label = 'Exit %s'%i)
         plt.plot(x, plt_total_acc, label = 'Overall')
         plt.legend()
-        plt.savefig(msglogger.logdir+'/p_accuracy.pdf')
+        plt.savefig(msglogger.logdir+'/p_accuracy' + sname+'.pdf')
         plt.clf()
 
         for i in range(len(plt_exit_out_distrub[0])):
             plt.xlabel("Epochs")
             plt.ylabel("")
-            plt.title("Class distribution over exit: "+str(i))
+            plt.ylim(0, 700)
+            plt.yticks(range(0, 700, 50))
+            plt.title("Class distribution over exit: "+str(i) + '(scenario '+sname+')')
             for j in range(len(plt_exit_out_distrub[0][0])):
                 plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_out_distrub]],label = 'Class %s'%j)
             plt.legend()
-            plt.savefig(msglogger.logdir+'/p_exit_out_dist'+str(i)+'.pdf')
+            plt.savefig(msglogger.logdir+'/p_out_dist' + sname + '_e' + str(i)+'.pdf')
+            plt.yticks(range(0, 700, 50))
             plt.clf()
         
         for i in range(len(plt_exit_tru_distrub[0])):
             plt.xlabel("Epochs")
             plt.ylabel("")
-            plt.title("Class distribution over exit: "+str(i))
+            plt.ylim(0, 700)
+            plt.yticks(range(0, 700, 50))
+
+            plt.title("Class distribution over exit: "+str(i) + '(scenario '+sname+')')
             for j in range(len(plt_exit_tru_distrub[0][0])):
                 plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_tru_distrub]],label = 'Class %s'%j)
             plt.legend()
-            plt.savefig(msglogger.logdir+'/p_exit_tru_dist'+str(i)+'.pdf')
+            plt.savefig(msglogger.logdir+'/p_tru_dist' + sname + '_e' + str(i)+'.pdf')
             plt.clf()
 
 
@@ -975,6 +1016,21 @@ def earlyexit_validate_loss(output, target, criterion, args):
     this_batch_size = target.size(0)
     
     #earlyexit_validate_criterion = nn.CrossEntropyLoss(reduce=False).to(args.device)
+    
+    # log_softmax = nn.LogSoftmax(dim=1)
+    # soft_max = nn.Softmax(dim=1)
+    # w = torch.autograd.Variable(torch.FloatTensor(weights[0]))
+    # nll = nn.NLLLoss(weight=w.cpu())
+    # t = target.cpu()
+    # refinedtarget = torch.LongTensor(sclass[0]).index_select(0, target.cpu())
+    # rt = refinedtarget.cuda()
+    # o2 = output[0].cpu()
+        #     log_probabilities = self.log_softmax(logits)
+        # nll = nn.NLLLoss(weight=self.class_weights)
+        # # truetarget = torch.tensor(self.super_classes.index_select(0, target), dtype=torch.long, device='cuda')
+        # truetarget = self.super_classes.index_select(0, target).long()
+
+        # loss = nll(log_probabilities, truetarget)
 
     for exitnum in range(args.num_exits):
         # calculate losses at each sample separately in the minibatch.
