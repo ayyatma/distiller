@@ -56,7 +56,7 @@ def get_exits_def():
                                                   nn.Linear(1600, 3))),
                  ('layer2', nn.Sequential(nn.AvgPool2d(3),
                                                   nn.Flatten(),
-                                                  nn.Linear(800, 3)))]
+                                                  nn.Linear(800, 5)))]
     # exits_def = [('layer1.2.relu2', nn.Sequential(nn.AvgPool2d(3),
     #                                               nn.Flatten(),
     #                                               nn.Linear(1600, NUM_CLASSES)))]

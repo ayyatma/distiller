@@ -130,8 +130,8 @@ def config_pylogger(log_cfg_file, experiment_name, output_dir='logs', verbose=Fa
     directory with this name.  This can be useful when accessing experiment data from
     TensorBoard, for example.
     """
-    timestr = time.strftime("%Y.%m.%d-%H%M%S")
-    exp_full_name = timestr if experiment_name is None else experiment_name + '___' + timestr
+    timestr = time.strftime("%y.%m.%d-%H%M")
+    exp_full_name = timestr if experiment_name is None else timestr + '_' + experiment_name
     logdir = os.path.join(output_dir, exp_full_name)
     if not os.path.exists(logdir):
         os.makedirs(logdir)

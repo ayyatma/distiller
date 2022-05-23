@@ -32,8 +32,13 @@ class CostAdjustedCrossEntropyLoss(nn.Module):
         w2 = w1.gather(1, predtarget.view(-1, 1))
         indexedweights = torch.reshape(w2, (-1,))
         l2 = -indexedweights * log_probabilities.index_select(-1, truetarget).diag()
-        l3 = torch.sum(1/torch.sum(indexedweights) * l2)
+        #mean reduction
+        l3 = torch.sum(1/torch.sum(indexedweights) * l2)  
+        # l3 = torch.sum(l2)  
         
+        # l3 = torch.mean(l2)     
+        #sum reduction
+        # l3 = torch.sum(l2)
         # NLLLoss(x, class) = -weights[class] * x[class]
         # print(target)
         # print(truetarget)

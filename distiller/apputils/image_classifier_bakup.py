@@ -21,7 +21,6 @@ import os
 import logging
 from collections import OrderedDict
 import numpy as np
-from soupsieve import match
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -43,101 +42,121 @@ from distiller.data_loggers import *
 import distiller.quantization as quantization
 import distiller.models as models
 import matplotlib.pyplot as plt
-import sklearn.preprocessing as skproc
 from distiller.models import create_model
 from distiller.utils import float_range_argparse_checker as float_range
-from tsmoothie.smoother import *
-import pandas as pd
+
 # Logger handle
 msglogger = logging.getLogger()
 
-def ConstructWeightMatrix (a1, b1, c1, a2, b2, c2, a3, b3, c3, b4, flag):
-    if flag == 0:
-        weights=[[  [a1, b1, c1], 
-                    [b1, a1, c1], 
-                    [c1, c1, a1]], 
-                [   [a2, b2, b2, b2, c2], 
-                    [b1, a1, b1, b1, c1], 
-                    [b1, b1, a1, b1, c1],
-                    [b2, b2, b2, a2, c2],
-                    [c2, c2, c1, c1, a1]],
-                [   [a1, b1, b3, b2, b2, b3, b1, b1, b1, b1], 
-                    [b1, a1, b3, b2, b2, b3, b1, b1, b1, b1], 
-                    [c3, c3, a3, c3, c3, c3, c3, c3, c3, c3], 
-                    [c2, c2, c2, a2, c2, c2, c2, c2, c2, c2], 
-                    [c2, c2, c2, c2, a2, c2, c2, c2, c2, c2], 
-                    [c3, c3, c3, c3, c3, a3, c3, c3, c3, c3], 
-                    [b1, b1, b3, b2, b2, b3, a1, b1, b1, b1], 
-                    [b1, b1, b3, b2, b2, b3, b1, a1, b1, b1], 
-                    [b1, b1, b3, b2, b2, b3, b1, b1, a1, b1], 
-                    [b1, b1, b3, b2, b2, b3, b1, b1, b1, a1]]]
-    elif flag == 1:
-        weights=[[  [a1, b1, c1], 
-                    [b1, a1, c1], 
-                    [c1, c1, a1]], 
-                [   [a2, b2, b2, b2, c2], 
-                    [b1, a1, b1, b1, c1], 
-                    [b1, b1, a1, b1, c1],
-                    [b2, b2, b2, a2, c2],
-                    [c2, c2, c1, c1, a1]],
-                [   [a1, b1, b3, b3, b3, b3, b1, b1, b1, b1], 
-                    [b1, a1, b3, b3, b3, b3, b1, b1, b1, b1], 
-                    [c3, c3, a3, c3, c3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, a3, c3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, c3, a3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, c3, c3, a3, c3, c3, c3, c3], 
-                    [b1, b1, b3, b3, b3, b3, a1, b1, b1, b1], 
-                    [b1, b1, b3, b3, b3, b3, b1, a1, b1, b1], 
-                    [b1, b1, b3, b3, b3, b3, b1, b1, a1, b1], 
-                    [b1, b1, b3, b3, b3, b3, b1, b1, b1, a1]]]
-    elif flag == 2:
-        weights=[[  [a1, b1, c1], 
-                    [b1, a1, c1], 
-                    [c1, c1, a1]], 
-                [   [a2, b2, b2, b2, c2], 
-                    [b1, a1, b1, b1, c1], 
-                    [b1, b1, a1, b1, c1],
-                    [b2, b2, b2, a2, c2],
-                    [c2, c2, c1, c1, a1]],
-                [   [a1, b4, b3, b3, b3, b3, b4, b4, b4, b4], 
-                    [b4, a1, b3, b3, b3, b3, b4, b4, b4, b4], 
-                    [c3, c3, a3, c3, c3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, a3, c3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, c3, a3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, c3, c3, a3, c3, c3, c3, c3], 
-                    [b4, b4, b3, b3, b3, b3, a1, b4, b4, b4], 
-                    [b4, b4, b3, b3, b3, b3, b4, a1, b4, b4], 
-                    [b4, b4, b3, b3, b3, b3, b4, b4, a1, b4], 
-                    [b4, b4, b3, b3, b3, b3, b4, b4, b4, a1]]]
-    return weights
-
-
 # sname = "2-2"
-# acc_modi = 1
-# exi_modi = 1
+# exit_width = [3, 3]
+# slabel = [[2], [2]]
+# sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+#             [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [[0.4, 0.6, 0.9], 
+#             [0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
 
-# a1, b1, c1 = 1, 1, 1
-# a2, b2, c2 = 1, 1, 1
-# a3, b3, c3 = 1, 1, 1
-# weights = ConstructWeightMatrix(a1, b1, c1, a2, b2, c2, a3, b3, c3, flag = 0)
-# branch_weight = [1/3, 1/3, 1/3]
-slabel = [[2], [4]]
+#sname = "2-4top"  
+# exit_width = [3, 5]
+# slabel = [[2], [4]]
+# sclass  =  [[2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+#             [4, 4, 0, 2, 3, 1, 4, 4, 4, 4],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [[0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]
+  
+#sname = "3-3"
+# exit_width = [4, 4]
+# slabel = [[3], [3]]
+# sclass  =  [[3, 3, 0, 3, 3, 1, 3, 3, 2, 3], 
+#             [0, 3, 3, 1, 3, 3, 3, 2, 3, 3],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [[0.4, 0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+
+#sname="base"
+# exit_width = [10, 10]
+# slabel = [[10], [10]]
+# sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [ [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+
+# sname="2-2fake"
+# slabel = [[0, 1, 3, 4, 6, 7, 8, 9], [0, 1, 2, 5, 6, 7, 8, 9]]
+# sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+#             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+# weights = [ [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 
+#             [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4],
+#             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]]  
+
+sname="_2-2cost_adjusted_"
+exit_width = [3, 3]
+slabel = [[2], [2]]
 sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
-            [4, 4, 0, 1, 2, 3, 4, 4, 4, 4],
+            [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+a = 0.4
+b = 0.8
+c = 4
+weights = [ [[a, b, c], [b, a, c], [b, b, a]], 
+            [[a, b, c], [b, a, c], [b, b, a]],
+            [[a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+            [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+            [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a]]]
+
+sname = "2-2"
+exit_width = [3, 3]
+slabel = [[2], [2]]
+sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+            [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+c = 0.4
+b = 0.4
+a = 0.2
+weights = [ [[c, c, c], [c, c, c], [c, c, c]], 
+            [[b, b, b], [b, b, b], [b, b, b]],
+            [[a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+             [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+             [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+             [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
+             [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a]]]
+
+sname = "2-2base"
+exit_width = [3, 3]
+slabel = [[2], [2]]
+sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
+            [2, 2, 2, 0, 1, 2, 2, 2, 2, 2],
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
 
+
+branch_weight = [0.4, 0.4]
+c = 5
+b = 2
+a = 1
+weights = [ [[a, a, b], [a, a, b], [b, b, a]], 
+            [[a, a, b], [a, a, b], [b, b, a]],
+            [[a, b, b, b, b, b, b, b, b, b], [b, a, b, b, b, b, b, b, b, b], 
+             [c, c, b, c, c, c, c, c, c, c], [c, c, c, b, c, c, c, c, c, c], 
+             [c, c, c, c, b, c, c, c, c, c], [c, c, c, c, c, b, c, c, c, c], 
+             [b, b, b, b, b, b, a, b, b, b], [b, b, b, b, b, b, b, a, b, b], 
+             [b, b, b, b, b, b, b, b, a, b], [b, b, b, b, b, b, b, b, b, a]]]
+             
 plt_total_samples = 0
 plt_exit_samples = []
 plt_exit_samples_p = []
 plt_exit_accurac = []
-plt_exit_pred_distrub = []
-plt_exit_true_distrub = []
+plt_exit_out_distrub = []
+plt_exit_tru_distrub = []
 plt_total_acc = []
-plt_stacked_true_classes = []
-plt_stacked_pred_classes = []
 
-plt_stats_interval = 5
-    
 class ClassifierCompressor(object):
     """Base class for applications that want to compress image classifiers.
 
@@ -169,117 +188,6 @@ class ClassifierCompressor(object):
         num_exits = len(args.earlyexit_thresholds) + 1
 
         # Define loss function (criterion)
-        self.clr = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
-
-        scenario = args.scenario
-        b4 = 1
-        self.sname = f"scen{scenario}"
-        if scenario == 0:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 1, 1
-            a2, b2, c2 = 1, 1, 1
-            a3, b3, c3 = 1, 1, 1
-            weight_form = 0
-
-        elif scenario == 1:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 2, 5
-            a2, b2, c2 = 3, 6, 15
-            a3, b3, c3 = 5, 10, 25
-            weight_form = 0
-
-        elif scenario == 2:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 5, 20
-            a2, b2, c2 = 3, 15, 60
-            a3, b3, c3 = 5, 25, 100
-            weight_form = 0
-        elif scenario == 3:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 10, 50
-            a2, b2, c2 = 5, 30, 150
-            a3, b3, c3 = 20, 50, 250
-            weight_form = 0
-        elif scenario == 4:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 25, 100
-            a2, b2, c2 = 10, 75, 300
-            a3, b3, c3 = 20, 150, 500
-            weight_form = 0
-        elif scenario == 5:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 25, 1000
-            a2, b2, c2 = 10, 75, 3000
-            a3, b3, c3 = 20, 150, 5000
-            weight_form = 0
-
-
-        elif scenario == 6:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 25, 100
-            a2, b2, c2 = 10, 75, 300
-            a3, b3, c3 = 200, 500, 1000
-            weight_form = 1
-        
-        elif scenario == 7:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 1, 2
-            a2, b2, c2 = 1, 1, 2
-            a3, b3, c3 = 2, 2, 5
-            weight_form = 1
-        
-        elif scenario == 8:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 1, 2
-            a2, b2, c2 = 1, 1, 2
-            a3, b3, c3 = 2, 2, 5
-            b4 = 2
-            weight_form = 2
-        
-        elif scenario == 9:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 1, 5
-            a2, b2, c2 = 1, 1, 5
-            a3, b3, c3 = 4, 4, 10
-            b4 = 2
-            weight_form = 2
-
-        elif scenario == 10:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 1, 2
-            a2, b2, c2 = 1, 1, 2
-            a3, b3, c3 = 1, 1, 5
-            weight_form = 0
-
-        elif scenario == 11:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 1, 1, 3
-            a2, b2, c2 = 1, 1, 5
-            a3, b3, c3 = 1, 1, 7
-            weight_form = 0
-
-        elif scenario == 12:
-            self.acc_modi = 1
-            self.exi_modi = 1
-            a1, b1, c1 = 0.5, 1, 2
-            a2, b2, c2 = 0.5, 1, 3
-            a3, b3, c3 = 0.5, 1, 4
-            weight_form = 0
-
-        weights = ConstructWeightMatrix(a1, b1, c1, a2, b2, c2, a3, b3, c3, b4, flag = weight_form)
-        
         self.criterion = []
         for i in range(num_exits):
             self.criterion.append(CostAdjustedCrossEntropyLoss(class_weights=torch.FloatTensor(weights[i]), super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
@@ -288,10 +196,7 @@ class ClassifierCompressor(object):
         self.activations_collectors = create_activation_stats_collectors(
             self.model, *self.args.activation_stats)
         self.performance_tracker = apputils.SparsityAccuracyTracker(self.args.num_best_scores)
-
     
-    # def select_scenario(scen):
-
     def load_datasets(self):
         """Load the datasets"""
         if not all((self.train_loader, self.val_loader, self.test_loader)):
@@ -383,101 +288,63 @@ class ClassifierCompressor(object):
                                      scheduler=self.compression_scheduler, extras=checkpoint_extras,
                                      is_best=is_best, name=self.args.name, dir=msglogger.logdir)
 
-    def plt_stats(self, epoch):
-        dpiv = 400
-        #clear old plots to reduce clutter
-        for file in os.listdir(msglogger.logdir):
-            if file.startswith(f"i{self.sname}") or file.startswith(f"p{self.sname}"):
-                os.remove(f"{msglogger.logdir}/{file}")
-
+    def plt_stats(self):
         xsize = len(plt_exit_samples)
         total_samples = np.sum(plt_exit_samples)
         x = [i for i in range(0, xsize)]
         plt.xlabel("Epochs")
         plt.ylabel("Samples")
-        plt.title(f"Sample number over epochs (scenario {self.sname})")
+        plt.title('Sample number over epochs (scenario '+sname+')')
         for i in range(len(plt_exit_samples[0])):
-            y = [pt[i] for pt in plt_exit_samples]
-            plt.plot(x, y, label = 'Exit %s'%i)
+            plt.plot(x,[pt[i] for pt in plt_exit_samples],label = 'Exit %s'%i)
         plt.legend()
-        plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_exits.pdf")
-        plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_exits.png", dpi=dpiv, bbox_inches = 'tight')
+        plt.savefig(msglogger.logdir+'/p_samples_n' + sname+'.pdf')
+        plt.clf()
+
+        plt.xlabel("Epochs")
+        plt.ylabel("Samples %")
+        plt.title('Sample percent over epochs (scenario '+sname+')')
+        for i in range(len(plt_exit_samples_p[0])):
+            plt.plot(x,[pt[i] for pt in plt_exit_samples_p],label = 'Exit %s'%i)
+        plt.legend()
+        plt.savefig(msglogger.logdir+'/p_samples_p' + sname+'.pdf')
         plt.clf()
 
         plt.xlabel("Epochs")
         plt.ylabel("Exit accuracy %")
-        plt.title(f"Exit accuracy over epochs (scenario {self.sname})")
+        plt.title('Exit accuracy over epochs (scenario '+sname+')')
         for i in range(len(plt_exit_accurac[0])):
-            plt.plot(x,[min(pt[i]*self.acc_modi, 100) for pt in plt_exit_accurac],label = 'Exit %s'%i)
-        plt.plot(x, plt_total_acc*self.acc_modi, label = 'Overall')
+            plt.plot(x,[pt[i] for pt in plt_exit_accurac],label = 'Exit %s'%i)
+        plt.plot(x, plt_total_acc, label = 'Overall')
         plt.legend()
-        plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_accur.pdf")
-        plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_accur.png", dpi=dpiv, bbox_inches = 'tight')
+        plt.savefig(msglogger.logdir+'/p_accuracy' + sname+'.pdf')
         plt.clf()
 
-        ytp_smoothed = []
-        for i in range(len(plt_exit_pred_distrub[0])):
+        for i in range(len(plt_exit_out_distrub[0])):
             plt.xlabel("Epochs")
             plt.ylabel("")
             plt.ylim(0, 700)
             plt.yticks(range(0, 700, 50))
-            plt.title(f"Class distribution over exit {i} (scenario {self.sname})")
-            ytp_smoothed.append([])
-            for j in range(len(plt_exit_pred_distrub[0][0])):
-                y = [pti[j] for pti in [pt[i] for pt in plt_exit_pred_distrub]]
-                smoother = ConvolutionSmoother(window_len=20, window_type='ones')
-                smoother.smooth(y)
-                ytp_smoothed[i].append(smoother.smooth_data[0][-1])
-                plt.plot(x, self.exi_modi * smoother.data[0], alpha=0.5, label = 'Class %s'%j, color = self.clr[j])
-                plt.plot(x, self.exi_modi * smoother.smooth_data[0], linewidth=2, color = self.clr[j])                
+            plt.title("Class distribution over exit: "+str(i) + '(scenario '+sname+')')
+            for j in range(len(plt_exit_out_distrub[0][0])):
+                plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_out_distrub]],label = 'Class %s'%j)
             plt.legend()
-            plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_predout_e{i}.pdf")
-            plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_predout_e{i}.png", dpi=dpiv, bbox_inches = 'tight')
+            plt.savefig(msglogger.logdir+'/p_out_dist' + sname + '_e' + str(i)+'.pdf')
             plt.yticks(range(0, 700, 50))
             plt.clf()
         
-        ytt_smoothed = []
-        for i in range(len(plt_exit_true_distrub[0])):
+        for i in range(len(plt_exit_tru_distrub[0])):
             plt.xlabel("Epochs")
             plt.ylabel("")
             plt.ylim(0, 700)
             plt.yticks(range(0, 700, 50))
 
-            plt.title(f"Class distribution over exit {i} (scenario {self.sname})")
-            ytt_smoothed.append([])
-            for j in range(len(plt_exit_true_distrub[0][0])):
-                y = [pti[j] for pti in [pt[i] for pt in plt_exit_true_distrub]]
-                smoother = ConvolutionSmoother(window_len=20, window_type='ones')
-                smoother.smooth(y)
-                ytt_smoothed[i].append(smoother.smooth_data[0][-1])
-                plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_true_distrub]],label = 'Class %s'%j)
+            plt.title("Class distribution over exit: "+str(i) + '(scenario '+sname+')')
+            for j in range(len(plt_exit_tru_distrub[0][0])):
+                plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_tru_distrub]],label = 'Class %s'%j)
             plt.legend()
-            plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_trueout_e{i}.pdf")
-            plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_trueout_e{i}.png", dpi=dpiv, bbox_inches = 'tight')
+            plt.savefig(msglogger.logdir+'/p_tru_dist' + sname + '_e' + str(i)+'.pdf')
             plt.clf()
-
-        names = np.array([['Exit0'], ['Exit1'], ['Exit2']], dtype=object)
-        # yt = plt_stacked_true_classes
-        ytp_smoothed = np.array(ytp_smoothed)
-        ytt_smoothed = np.array(ytt_smoothed)
-
-        ylabel = np.hstack((names, ytp_smoothed))
-        df = pd.DataFrame(ylabel, columns=['Classes', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
-        df.plot(x='Classes', kind='bar', stacked=True, title=f'Class distribution (scenario {self.sname})')
-        plt.xticks(rotation='horizontal')
-        plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_classesP.pdf", bbox_inches = 'tight')
-        plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_classesP.png", dpi=dpiv, bbox_inches = 'tight')
-        plt.clf()
-        
-        ylabel = np.hstack((names, ytt_smoothed))
-        df = pd.DataFrame(ylabel, columns=['Classes', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
-        df.plot(x='Classes', kind='bar', stacked=True, title=f'Class distribution (scenario {self.sname})')
-        plt.xticks(rotation='horizontal')
-        plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_classesT.pdf", bbox_inches = 'tight')
-        plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_classesT.png", dpi=dpiv, bbox_inches = 'tight')
-        plt.clf()
-
-        
 
 
 
@@ -503,8 +370,8 @@ class ClassifierCompressor(object):
             msglogger.info('\n')
             top1, loss = self.train_validate_with_scheduling(epoch)
             self._finalize_epoch(epoch, top1)
-            if epoch % plt_stats_interval == 0 and epoch > 1:
-                self.plt_stats(epoch)
+            if epoch % 5 == 0 and epoch > 1:
+                self.plt_stats()
         return self.performance_tracker.perf_scores_history
 
     def validate(self, epoch=-1):
@@ -537,7 +404,7 @@ def init_classifier_compression_arg_parser(include_ptq_lapq_args=False):
                         help='number of total epochs to run (default: 90')
     parser.add_argument('-b', '--batch-size', default=256, type=int,
                         metavar='N', help='mini-batch size (default: 256)')
-    parser.add_argument('--scenario', type=int, metavar='N', default=1)
+
     optimizer_args = parser.add_argument_group('Optimizer arguments')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
                     type=float, metavar='LR', help='initial learning rate')
@@ -639,7 +506,7 @@ def _init_logger(args, script_dir):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'),
-                                         args.name + f'_scen{args.scenario}', args.output_dir, args.verbose)
+                                         args.name, args.output_dir, args.verbose)
 
     # Log various details about the execution environment.  It is sometimes useful
     # to refer to past experiment executions and this information may be useful.
@@ -1131,26 +998,12 @@ def earlyexit_loss(output, target, criterion, args):
             continue
         
         exit_loss = criterion[exitnum](output[exitnum], target)
-        weighted_loss += args.earlyexit_lossweights[exitnum] * exit_loss
+        weighted_loss += exit_loss
 
         args.exiterrors[exitnum].add(output[exitnum].detach(), target)
     # handle final exit
     # args.exiterrors[args.num_exits-1].add(output[args.num_exits-1].detach(), target)
     # weighted_loss += (1.0 - sum_lossweights) * criterion(output[args.num_exits-1], target)
-
-    
-    # weighted_loss = 0
-    # sum_lossweights = sum(args.earlyexit_lossweights)
-    # for exitnum in range(args.num_exits-1):
-    #     if output[exitnum] is None:
-    #         continue
-    #     exit_loss = criterion[exitnum](output[exitnum], target)
-    #     weighted_loss += args.earlyexit_lossweights[exitnum] * exit_loss
-    #     args.exiterrors[exitnum].add(output[exitnum].detach(), target)
-    # # handle final exit
-    # weighted_loss += (1.0 - sum_lossweights) * criterion[exitnum](output[args.num_exits-1], target)
-    # args.exiterrors[args.num_exits-1].add(output[args.num_exits-1].detach(), target)
-
     return weighted_loss
 
 
@@ -1270,14 +1123,9 @@ def earlyexit_validate_stats(args):
     # plt_exit_samples_p.append((args.exit_taken*100.0) / sum_exit_stats)
     plt_exit_accurac.append(acc_stats)
 
-    plt_exit_pred_distrub.append(args.preds)
-    plt_exit_true_distrub.append(args.labels)
+    plt_exit_out_distrub.append(args.preds)
+    plt_exit_tru_distrub.append(args.labels)
     plt_total_acc.append(total_acc)
-    # plt_stacked_pred_classes.clear()
-    global plt_stacked_pred_classes
-    plt_stacked_pred_classes = np.array(args.preds)
-    global plt_stacked_true_classes
-    plt_stacked_true_classes = np.array(args.labels)
 
     for exitnum in range(args.num_exits):
         total = np.sum(args.preds[exitnum])
