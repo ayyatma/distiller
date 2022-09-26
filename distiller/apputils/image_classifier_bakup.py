@@ -129,6 +129,7 @@ weights = [ [[c, c, c], [c, c, c], [c, c, c]],
              [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a], 
              [a, a, a, a, a, a, a, a, a, a], [a, a, a, a, a, a, a, a, a, a]]]
 
+
 sname = "2-2base"
 exit_width = [3, 3]
 slabel = [[2], [2]]

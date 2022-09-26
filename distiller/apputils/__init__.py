@@ -25,6 +25,8 @@ from .dataset_summaries import *
 from .performance_tracker import *
 from .cel_vector import *
 from .cel_costadjusted import *
+from .cel_costadjusted_sample import *
+from .cel_costadjusted_sum import *
 
 del data_loaders
 del checkpoint

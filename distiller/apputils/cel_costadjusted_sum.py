@@ -3,7 +3,7 @@ from torch import autograd
 from torch import nn
 
 
-class CostAdjustedCrossEntropyLoss(nn.Module):
+class CostAdjustedCrossEntropyLossSum(nn.Module):
     """
     This criterion (`CrossEntropyLoss`) combines `LogSoftMax` and `NLLLoss` in one single class.
     
@@ -17,6 +17,13 @@ class CostAdjustedCrossEntropyLoss(nn.Module):
         self.super_classes = torch.FloatTensor(super_classes).cuda()
 
     def forward(self, logits, target, prev_passed = None):
+        # log_probabilities = self.log_softmax(logits)
+        # nll = nn.NLLLoss(weight=self.class_weights)
+        # # truetarget = torch.tensor(self.super_classes.index_select(0, target), dtype=torch.long, device='cuda')
+        # truetarget = self.super_classes.index_select(0, target).long()
+        # loss = nll(log_probabilities, truetarget)
+        
+
         log_probabilities = self.log_softmax(logits)
         truetarget = self.super_classes.index_select(0, target).long()
         predtarget = torch.argmax(log_probabilities, dim=1)
@@ -26,8 +33,8 @@ class CostAdjustedCrossEntropyLoss(nn.Module):
         indexedweights = torch.reshape(w2, (-1,))
         l2 = -indexedweights * log_probabilities.index_select(-1, truetarget).diag()
         #mean reduction
-        l3 = torch.sum(1/torch.sum(indexedweights) * l2)  
-        # l3 = torch.sum(l2)  
+        # l3 = torch.sum(1/torch.sum(indexedweights) * l2)  
+        l3 = torch.sum(l2)  
         
         # l3 = torch.mean(l2)     
         #sum reduction

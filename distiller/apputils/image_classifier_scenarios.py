@@ -56,7 +56,6 @@ from itertools import cycle, islice
 # Logger handle
 msglogger = logging.getLogger()
 import itertools
-import torchsummary
 
 def ConstructWeightVector (a1, b1, a2, b2, a3):
     weights = [ [a1, a1, b1],
@@ -191,114 +190,6 @@ def ConstructWeightMatrix (a1, b1, c1, a2, b2, c2, a3, b3, c3, b4, weight_form):
                     [b4, b4, b3, b3, b4, b4, b4, a1, b3, b3], 
                     [c3, c3, c3, c3, c3, c3, c3, c3, a3, c3], 
                     [c3, c3, c3, c3, c3, c3, c3, c3, c3, a3]]]
-    elif weight_form == 6:
-        weights=[
-                [   [a1, c1, c1, c1, c1, c1, c1, c1, c1, c1],
-                    [c1, a1, c1, c1, c1, c1, c1, c1, c1, c1],
-                    [b1, b1, a1, b1, b1, b1, b1, b1, b1, b1],
-                    [c1, c1, c1, a1, c1, c1, c1, c1, c1, c1],
-                    [c1, c1, c1, c1, a1, c1, c1, c1, c1, c1],
-                    [b1, b1, b1, b1, b1, a1, b1, b1, b1, b1],
-                    [c1, c1, c1, c1, c1, c1, a1, c1, c1, c1],
-                    [c1, c1, c1, c1, c1, c1, c1, a1, c1, c1],
-                    [c1, c1, c1, c1, c1, c1, c1, c1, a1, c1],
-                    [c1, c1, c1, c1, c1, c1, c1, c1, c1, a1]],
-                [   [a1, c1, c1, c1, c1, c1, c1, c1, c1, c1],
-                    [c1, a1, c1, c1, c1, c1, c1, c1, c1, c1],
-                    [b2, b2, a2, b2, b2, b2, b2, b2, b2, b2],
-                    [b1, b1, b1, a1, b1, b1, b1, b1, b1, b1],
-                    [b1, b1, b1, b1, a1, b1, b1, b1, b1, b1],
-                    [b2, b2, b2, b2, b2, a2, b2, b2, b2, b2],
-                    [c1, c1, c1, c1, c1, c1, a1, c1, c1, c1],
-                    [c1, c1, c1, c1, c1, c1, c1, a1, c1, c1],
-                    [c1, c1, c1, c1, c1, c1, c1, c1, a1, c1],
-                    [c1, c1, c1, c1, c1, c1, c1, c1, c1, a1]],
-                [   [a1, b4, b3, b3, b3, b3, b4, b4, b4, b4], 
-                    [b4, a1, b3, b3, b3, b3, b4, b4, b4, b4], 
-                    [c3, c3, a3, c3, c3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, a3, c3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, c3, a3, c3, c3, c3, c3, c3], 
-                    [c3, c3, c3, c3, c3, a3, c3, c3, c3, c3], 
-                    [b4, b4, b3, b3, b3, b3, a1, b4, b4, b4], 
-                    [b4, b4, b3, b3, b3, b3, b4, a1, b4, b4], 
-                    [b4, b4, b3, b3, b3, b3, b4, b4, a1, b4], 
-                    [b4, b4, b3, b3, b3, b3, b4, b4, b4, a1]]]
-    elif  weight_form == 7:
-        a = np.ones((num_exits, 10, 10))
-        weights = a.tolist()
-    elif weight_form == 8:
-        w81 = np.ones((2, 2))
-        w82 = np.ones((3, 3))
-        w83 = np.ones((4, 4))
-        w84 = np.ones((5, 5))
-        w85 = np.ones((6, 6))
-        w86 = np.ones((7, 7))
-        w87 = np.ones((10, 10))
-        
-        w81 =  [[a1, a1],
-                [a1, a1]]
-        w82 =  [[a1, a1, c1],
-                [a1, a1, c1],
-                [c1, c1, a1]]
-        w83 =  [[a1, a1, a1, c1],
-                [a1, a1, a1, c1],
-                [a1, a1, a1, c1],
-                [c1, c1, c1, a1]]
-        w84 =  [[a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, c1],
-                [c1, c1, c1, c1, a1]]
-        w85 =  [[a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, c1],
-                [c1, c1, c1, c1, c1, a1]]
-        w86 =  [[a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [c1, c1, c1, c1, c1, c1, a1]]
-        w87 = [ [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3]]
-        weights = np.array((w81, w82, w83, w84, w85, w86, w87))
-    elif weight_form == 9:
-        w91 = np.ones((4, 4))
-        w92 = np.ones((7, 7))
-        w93 = np.ones((10, 10))
-        w91 =  [[a1, a1, a1, c1],
-                [a1, a1, a1, c1],
-                [a1, a1, a1, c1],
-                [c1, c1, c1, a1]]
-        w92 =  [[a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [a1, a1, a1, a1, a1, a1, c1],
-                [c1, c1, c1, c1, c1, c1, a1]]
-        w93 = [ [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [a1, a1, a1, a1, a1, a1, a1, a1, a1, a1], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3], 
-                [c3, c3, c3, c3, c3, c3, c3, c3, c3, c3]]
-        weights = np.array((w91, w92, w93))
     return weights
 
 #base
@@ -337,8 +228,7 @@ class ClassifierCompressor(object):
     def __init__(self, args, script_dir):
         self.args = copy.deepcopy(args)
         self._infer_implicit_args(self.args)
-        self.sname = f"{args.scenario}_{self.args.dataset}"
-        self.logdir = _init_logger(self.args, script_dir, self.sname)
+        self.logdir = _init_logger(self.args, script_dir)
         _config_determinism(self.args)
         _config_compute_device(self.args)
         
@@ -352,12 +242,15 @@ class ClassifierCompressor(object):
         (self.model, self.compression_scheduler, self.optimizer, 
              self.start_epoch, self.ending_epoch) = _init_learner(self.args)
         
-        global num_exits
+
         num_exits = len(args.earlyexit_thresholds) + 1
+
         # Define loss function (criterion)
         self.clr = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
 
         scenario = args.scenario
+        b4 = 1
+        self.sname = f"scen{scenario}"
         self.acc_modi = 1
         self.exi_modi = 1
         global slabel, sclass
@@ -365,115 +258,258 @@ class ClassifierCompressor(object):
         sclass  = [ [2, 2, 0, 2, 2, 1, 2, 2, 2, 2], 
             [4, 4, 0, 1, 2, 3, 4, 4, 4, 4],
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-        
-        b4 = 2
-        if scenario.startswith('base'):            
-            a1, b1, c1 = 1, 1, 1
-            a2, b2, c2 = 1, 1, 1
-            a3, b3, c3 = 1, 1, 1
-            weight_form = 3
-            slabel = [[10], [10]]
-            sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
-                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-        elif scenario.startswith('multiple'): 
-            print('here')           
-            a1, b1, c1 = 1, 1, 1
-            a2, b2, c2 = 1, 1, 1
-            a3, b3, c3 = 1, 1, 1
-            weight_form = 7
-            slabel = [[10] for i in range (0, num_exits)]
-            sclass = [[i for i in range(0, 10)] for i in range (0, num_exits)]
-        elif scenario.startswith('multi_class_bag_cost'):
-            a1, b1, c1 = 1, 1, 1/20
-            a2, b2, c2 = 1, 1, 1/20
-            a3, b3, c3 = 1/20, 1/20, 1/50
-            if scenario.endswith('7'):
-                weight_form = 8
-                slabel = [[1], [2], [3], [4], [5], [6]]
-                sclass =   [[1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-                            [2, 2, 2, 2, 2, 2, 2, 2, 1, 0],
-                            [3, 3, 3, 3, 3, 3, 2, 3, 1, 0],
-                            [4, 3, 4, 4, 4, 4, 2, 4, 1, 0],
-                            [5, 3, 5, 5, 5, 5, 2, 4, 1, 0],
-                            [5, 3, 6, 6, 6, 6, 2, 4, 1, 0],
-                            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-            elif scenario.endswith('3'):                
-                weight_form = 9
-                slabel = [[3], [6]]
-                sclass =   [[3, 3, 3, 3, 3, 3, 2, 3, 1, 0],
-                            [5, 3, 6, 6, 6, 6, 2, 4, 1, 0],
-                            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
 
-        elif scenario.startswith('multi_class_bag_only'):
-            a1, b1, c1 = 1, 1, 1
-            a2, b2, c2 = 1, 1, 1
-            a3, b3, c3 = 1, 1, 1
-            if scenario.endswith('7'):
-                weight_form = 8
-                slabel = [[1], [2], [3], [4], [5], [6]]
-                sclass =   [[1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-                            [2, 2, 2, 2, 2, 2, 2, 2, 1, 0],
-                            [3, 3, 3, 3, 3, 3, 2, 3, 1, 0],
-                            [4, 3, 4, 4, 4, 4, 2, 4, 1, 0],
-                            [5, 3, 5, 5, 5, 5, 2, 4, 1, 0],
-                            [5, 3, 6, 6, 6, 6, 2, 4, 1, 0],
-                            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-            elif scenario.endswith('3'):
-                weight_form = 9
-                slabel = [[3], [6]]
-                sclass =   [[3, 3, 3, 3, 3, 3, 2, 3, 1, 0],
-                            [5, 3, 6, 6, 6, 6, 2, 4, 1, 0],
-                            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-
-
-        elif scenario == 'bag_only':            
-            a1, b1, c1 = 1, 1, 1
-            a2, b2, c2 = 1, 1, 1
-            a3, b3, c3 = 1, 1, 1
-            weight_form = 3
-        elif scenario == 'cost_only':
-            a1, b1, c1 = 1, 1, 1/20
-            a2, b2, c2 = 1, 1, 1/20
-            a3, b3, c3 = 1/20, 1/20, 1/50
-            b4 = 1/20
-            slabel = [[10], [10]]
-            sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
-                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-            weight_form = 6
-        elif scenario == 'bag_cost_low':
-            a1, b1, c1 = 1, 1, 1/2
-            a2, b2, c2 = 1, 1, 1/2
-            a3, b3, c3 = 1/2, 1/2, 1/5
-            b4 = 1/2
-            weight_form = 2
-        elif scenario == 'bag_cost_high':
-            a1, b1, c1 = 1, 1, 1/20
-            a2, b2, c2 = 1, 1, 1/20
-            a3, b3, c3 = 1/20, 1/20, 1/50
-            b4 = 1/20
-            weight_form = 2
-        elif scenario == 'matrix0':
+      
+        #Cost Based good results
+        if scenario == 0:
             a1, b1, c1 = 1, 1, 2
             a2, b2, c2 = 1, 1, 2
             a3, b3, c3 = 2, 2, 5
             b4 = 2
             weight_form = 2
-        
-
-        if scenario == 'vector':
+            loss_equ = 0
+        #
+        elif scenario == 10:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 5
+            b4 = 2
+            weight_form = 5
+            loss_equ = 0
+            sclass  = [ [2, 2, 2, 2, 2, 2, 2, 2, 0, 1], 
+                        [4, 4, 0, 1, 4, 4, 4, 4, 2, 3],
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+        elif scenario == 31:
+            a1, b1, c1 = 1, 1, 1
+            a2, b2, c2 = 1, 1, 1
+            a3, b3, c3 = 1, 1, 1
+            weight_form = 3
+            loss_equ = 0
+            slabel = [[10], [10]]
+            sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+        elif scenario == 32:
+            a1, b1, c1 = 1, 1, 1
+            a2, b2, c2 = 1, 1, 1
+            a3, b3, c3 = 1, 1, 1
+            weight_form = 3
+            loss_equ = 1
+            slabel = [[10], [10]]
+            sclass  =  [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]    
+        elif scenario == 20:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 7
+            b4 = 2
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 21:
+            a1, b1, c1 = 1, 1, 3
+            a2, b2, c2 = 1, 1, 3
+            a3, b3, c3 = 2, 3, 5
+            b4 = 3
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 22:
+            a1, b1, c1 = 1, 1, 3
+            a2, b2, c2 = 1, 1, 3
+            a3, b3, c3 = 2, 3, 7
+            b4 = 3
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 23:
+            a1, b1, c1 = 1, 2, 3
+            a2, b2, c2 = 1, 2, 3
+            a3, b3, c3 = 2, 3, 7
+            b4 = 3
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 24:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 3
+            b4 = 2
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 25:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 7
+            b4 = 2
+            weight_form = 2
+            loss_equ = 1
+        elif scenario == 26:
+            a1, b1, c1 = 1, 1, 3
+            a2, b2, c2 = 1, 1, 3
+            a3, b3, c3 = 2, 3, 5
+            b4 = 3
+            weight_form = 2
+            loss_equ = 1
+        elif scenario == 27:
+            a1, b1, c1 = 1, 1, 3
+            a2, b2, c2 = 1, 1, 3
+            a3, b3, c3 = 2, 3, 7
+            b4 = 3
+            weight_form = 2
+            loss_equ = 1
+        elif scenario == 28:
+            a1, b1, c1 = 1, 2, 3
+            a2, b2, c2 = 1, 2, 3
+            a3, b3, c3 = 2, 3, 7
+            b4 = 3
+            weight_form = 2
+            loss_equ = 1
+        elif scenario == 29:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 3
+            b4 = 2
+            weight_form = 2
+            loss_equ = 1
+        #Cost Based good results
+        elif scenario == 60:
+            a1, b1, c1 = 1, 1, 1/2
+            a2, b2, c2 = 1, 1, 1/2
+            a3, b3, c3 = 1/2, 1/2, 1/5
+            b4 = 1/2
+            weight_form = 2
+            loss_equ = 0
+        #Bag only impact (no cost based)
+        elif scenario == 61:
+            a1, b1, c1 = 1, 1, 1
+            a2, b2, c2 = 1, 1, 1
+            a3, b3, c3 = 1, 1, 1
+            weight_form = 0
+            loss_equ = 0
+        elif scenario == 62:
+            a1, b1, c1 = 1, 1, 1/20
+            a2, b2, c2 = 1, 1, 1/20
+            a3, b3, c3 = 1/20, 1/20, 1/50
+            b4 = 1/20
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 63:
+            a1, b1, c1 = 1, 1, 1/10
+            a2, b2, c2 = 1, 1, 1/10
+            a3, b3, c3 = 1, 1, 1
+            weight_form = 4
+            loss_equ = 0
+        elif scenario == 1:
+            a1, b1, c1 = 1, 2, 5
+            a2, b2, c2 = 3, 6, 15
+            a3, b3, c3 = 5, 10, 25
+            weight_form = 0
+            loss_equ = 0
+        elif scenario == 2:
+            a1, b1, c1 = 1, 5, 20
+            a2, b2, c2 = 3, 15, 60
+            a3, b3, c3 = 5, 25, 100
+            weight_form = 0
+            loss_equ = 0
+        elif scenario == 3:
+            a1, b1, c1 = 1, 10, 50
+            a2, b2, c2 = 5, 30, 150
+            a3, b3, c3 = 20, 50, 250
+            weight_form = 0
+            loss_equ = 0
+        elif scenario == 4:
+            a1, b1, c1 = 1, 25, 100
+            a2, b2, c2 = 10, 75, 300
+            a3, b3, c3 = 20, 150, 500
+            weight_form = 0
+            loss_equ = 0
+        elif scenario == 5:
+            a1, b1, c1 = 1, 25, 1000
+            a2, b2, c2 = 10, 75, 3000
+            a3, b3, c3 = 20, 150, 5000
+            weight_form = 0
+            loss_equ = 0
+        elif scenario == 6:
+            a1, b1, c1 = 1, 25, 100
+            a2, b2, c2 = 10, 75, 300
+            a3, b3, c3 = 200, 500, 1000
+            weight_form = 1
+            loss_equ = 0
+        elif scenario == 7:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 5
+            weight_form = 1
+            loss_equ = 0       
+        elif scenario == 9:
+            a1, b1, c1 = 1, 1, 5
+            a2, b2, c2 = 1, 1, 5
+            a3, b3, c3 = 4, 4, 10
+            b4 = 2
+            weight_form = 2
+            loss_equ = 0
+        elif scenario == 107:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 4, 4, 10
+            weight_form = 1
+            loss_equ = 1
+        elif scenario == 104:
+            a1, b1, c1 = 1, 25, 100
+            a2, b2, c2 = 10, 75, 300
+            a3, b3, c3 = 20, 150, 500
+            weight_form = 0
+            loss_equ = 1
+        elif scenario == 102:
+            a1, b1, c1 = 1, 5, 20
+            a2, b2, c2 = 3, 15, 60
+            a3, b3, c3 = 5, 25, 100
+            weight_form = 0
+            loss_equ = 1
+        elif scenario == 105:
+            a1, b1, c1 = 1, 25, 1000
+            a2, b2, c2 = 10, 75, 3000
+            a3, b3, c3 = 20, 150, 5000
+            weight_form = 0
+            loss_equ = 1
+        elif scenario == 41:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 1, 1, 2
+            a3, b3, c3 = 2, 2, 5
+            b4 = 2
+            weight_form = 2
+            loss_equ = 2
+        elif scenario == 42:
+            a1, b1, c1 = 1, 1, 2
+            a2, b2, c2 = 2, 2, 4
+            a3, b3, c3 = 3, 2, 5
+            weight_form = 4
+            loss_equ = 2
+        elif scenario == 70:
+            a1, b1 = 1, 1
+            a2, b2 = 1, 1
+            a3 = 1
+            loss_equ = 3
+        elif scenario == 71:
+            a1, b1 = 1, 0.5
+            a2, b2 = 1, 0.2
+            a3 = 1
+            loss_equ = 3
+        elif scenario == 72:
+            a1, b1 = 2, 1
+            a2, b2 = 5, 1
+            a3 = 1
+            loss_equ = 3
+        if loss_equ == 3:
             weights = ConstructWeightVector(a1, b1, a2, b2, a3)
         else:
             weights = ConstructWeightMatrix(a1, b1, c1, a2, b2, c2, a3, b3, c3, b4, weight_form = weight_form)
         
         self.criterion = []
-        if (self.args.loss_function == "normal"):
+        if (loss_equ == 0):
             for i in range(num_exits):
                 self.criterion.append(CostAdjustedCrossEntropyLoss(
                     class_weights=torch.FloatTensor(weights[i]), 
                     super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
-        elif(self.args.loss_function == "sample_based"):
+        elif(loss_equ == 1):
             for i in range(num_exits-1):
                 self.criterion.append(CostAdjustedCrossEntropyLossSamples(
                     class_weights=torch.FloatTensor(weights[i]), 
@@ -484,12 +520,24 @@ class ClassifierCompressor(object):
                 class_weights=torch.FloatTensor(weights[num_exits - 1]), 
                 super_classes=torch.FloatTensor(sclass[num_exits - 1]), 
                 threshold = inf).to(self.args.device))
-
+        elif (loss_equ == 2):
+            for i in range(num_exits):
+                self.criterion.append(CostAdjustedCrossEntropyLossSum(
+                    class_weights=torch.FloatTensor(weights[i]), 
+                    super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
+        elif (loss_equ == 3):
+            for i in range(num_exits):
+                self.criterion.append(ClassBasedCrossEntropyLossVector(
+                    class_weights=torch.FloatTensor(weights[i]), 
+                    super_classes=torch.FloatTensor(sclass[i])).to(self.args.device))
 
         self.train_loader, self.val_loader, self.test_loader = (None, None, None)
         self.activations_collectors = create_activation_stats_collectors(
             self.model, *self.args.activation_stats)
         self.performance_tracker = apputils.SparsityAccuracyTracker(self.args.num_best_scores)
+
+    
+    # def select_scenario(scen):
 
     def load_datasets(self):
         """Load the datasets"""
@@ -505,10 +553,7 @@ class ClassifierCompressor(object):
     def _infer_implicit_args(args):
         # Infer the dataset from the model name
         if not hasattr(args, 'dataset'):
-            if (args.edataset == ""):
-                args.dataset = distiller.apputils.classification_dataset_str_from_arch(args.arch)
-            else:
-                args.dataset = args.edataset
+            args.dataset = distiller.apputils.classification_dataset_str_from_arch(args.arch)
         if not hasattr(args, "num_classes"):
             args.num_classes = distiller.apputils.classification_num_classes(args.dataset)
         return args
@@ -528,19 +573,18 @@ class ClassifierCompressor(object):
         self.load_datasets()
 
         with collectors_context(self.activations_collectors["train"]) as collectors:
-            # torchsummary.summary(self.model, (3, 32, 32))
-            distiller.log_weights_sparsity(self.model, epoch, [self.tflogger, self.pylogger])
             loss = train(self.train_loader, self.model, self.criterion, self.optimizer, 
                                      epoch, self.compression_scheduler, 
                                      loggers=[self.tflogger, self.pylogger], args=self.args)
             # if verbose:
-            distiller.log_weights_sparsity(self.model, epoch, [self.tflogger, self.pylogger])
+            #     distiller.log_weights_sparsity(self.model, epoch, [self.tflogger, self.pylogger])
             distiller.log_activation_statistics(epoch, "train", loggers=[self.tflogger],
                                                 collector=collectors["sparsity"])
             if self.args.masks_sparsity:
                 msglogger.info(distiller.masks_sparsity_tbl_summary(self.model, 
                                                                     self.compression_scheduler))
         return loss
+
     def train_validate_with_scheduling(self, epoch, validate=True, verbose=True):
         if self.compression_scheduler:
             self.compression_scheduler.on_epoch_begin(epoch)
@@ -594,9 +638,7 @@ class ClassifierCompressor(object):
                 os.remove(f"{msglogger.logdir}/{file}")
 
         xsize = len(plt_exit_samples)
-        total_samples = np.sum(plt_exit_samples[0])
-        samples_per_class = (int)(total_samples * 2/ self.args.num_classes)
-        samples_per_class_interval = (int)(samples_per_class / 10)
+        total_samples = np.sum(plt_exit_samples)
         x = [i for i in range(0, xsize)]
         plt.xlabel("Epochs")
         plt.ylabel("Samples")
@@ -604,19 +646,18 @@ class ClassifierCompressor(object):
         for i in range(len(plt_exit_samples[0])):
             y = [pt[i] for pt in plt_exit_samples]
             plt.plot(x, y, label = 'Exit %s'%i)
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.legend()
         plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_exits.pdf")
         plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_exits.png", dpi=dpiv, bbox_inches = 'tight')
         plt.clf()
 
         plt.xlabel("Epochs")
         plt.ylabel("Exit accuracy %")
-        plt.title(f"Exit accuracy over epochs ({self.sname})")
-        plt.ylim(0, 100, 10)
+        plt.title(f"Exit accuracy over epochs (scenario {self.sname})")
         for i in range(len(plt_exit_accurac[0])):
             plt.plot(x,[min(pt[i]*self.acc_modi, 100) for pt in plt_exit_accurac],label = 'Exit %s'%i)
         plt.plot(x, plt_total_acc*self.acc_modi, label = 'Overall')
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.legend()
         plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_accur.pdf")
         plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_accur.png", dpi=dpiv, bbox_inches = 'tight')
         plt.clf()
@@ -625,28 +666,31 @@ class ClassifierCompressor(object):
         for i in range(len(plt_exit_pred_distrub[0])):
             plt.xlabel("Epochs")
             plt.ylabel("")
-            plt.ylim(0, samples_per_class, samples_per_class_interval)
-            plt.yticks(range(0, samples_per_class, samples_per_class_interval))
-            plt.title(f"Class distribution over exit {i} ({self.sname})")
+            plt.ylim(0, 700)
+            plt.yticks(range(0, 700, 50))
+            plt.title(f"Class distribution over exit {i} (scenario {self.sname})")
             ytp_smoothed.append([])
             for j in range(len(plt_exit_pred_distrub[0][0])):
                 y = [pti[j] for pti in [pt[i] for pt in plt_exit_pred_distrub]]
                 smoother = ConvolutionSmoother(window_len=20, window_type='ones')
                 smoother.smooth(y)
                 ytp_smoothed[i].append(smoother.smooth_data[0][-1])
-                plt.plot(x, self.exi_modi * smoother.data[0], alpha=0.5, color = self.clr[j])
-                plt.plot(x, self.exi_modi * smoother.smooth_data[0], linewidth=2, color = self.clr[j], label=f'Class {j}')                  
-            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+                plt.plot(x, self.exi_modi * smoother.data[0], alpha=0.5, label = 'Class %s'%j, color = self.clr[j])
+                plt.plot(x, self.exi_modi * smoother.smooth_data[0], linewidth=2, color = self.clr[j])                
+            plt.legend()
             plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_predout_e{i}.pdf")
             plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_predout_e{i}.png", dpi=dpiv, bbox_inches = 'tight')
+            plt.yticks(range(0, 700, 50))
             plt.clf()
         
         ytt_smoothed = []
         for i in range(len(plt_exit_true_distrub[0])):
             plt.xlabel("Epochs")
-            plt.ylim(0, samples_per_class, samples_per_class_interval)
-            plt.yticks(range(0, samples_per_class, samples_per_class_interval))
-            plt.title(f"Class distribution over exit {i} ({self.sname})")
+            plt.ylabel("")
+            plt.ylim(0, 700)
+            plt.yticks(range(0, 700, 50))
+
+            plt.title(f"Class distribution over exit {i} (scenario {self.sname})")
             ytt_smoothed.append([])
             for j in range(len(plt_exit_true_distrub[0][0])):
                 y = [pti[j] for pti in [pt[i] for pt in plt_exit_true_distrub]]
@@ -654,23 +698,19 @@ class ClassifierCompressor(object):
                 smoother.smooth(y)
                 ytt_smoothed[i].append(smoother.smooth_data[0][-1])
                 plt.plot(x,[pti[j] for pti in [pt[i] for pt in plt_exit_true_distrub]],label = 'Class %s'%j)
-            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plt.legend()
             plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_trueout_e{i}.pdf")
             plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_trueout_e{i}.png", dpi=dpiv, bbox_inches = 'tight')
             plt.clf()
 
-        # names = np.array([['Exit0'], ['Exit1'], ['Exit2']], dtype=object)
-
-        names = np.array(['Exit'+str(i) for i in range(num_exits)], dtype=object)
-        names = names.reshape(num_exits, 1)
-
+        names = np.array([['Exit0'], ['Exit1'], ['Exit2']], dtype=object)
         # yt = plt_stacked_true_classes
         ytp_smoothed = np.array(ytp_smoothed)
         ytt_smoothed = np.array(ytt_smoothed)
 
         ylabel = np.hstack((names, ytp_smoothed))
         df = pd.DataFrame(ylabel, columns=['Classes', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
-        df.plot(x='Classes', kind='bar', stacked=True, title=f'Class distribution ({self.sname})', ylim = (0, total_samples))
+        df.plot(x='Classes', kind='bar', stacked=True, title=f'Class distribution (scenario {self.sname})', ylim = (0, 5000))
         plt.xticks(rotation='horizontal')
         plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_classesP.pdf", bbox_inches = 'tight')
         plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_classesP.png", dpi=dpiv, bbox_inches = 'tight')
@@ -678,10 +718,11 @@ class ClassifierCompressor(object):
         
         ylabel = np.hstack((names, ytt_smoothed))
         df = pd.DataFrame(ylabel, columns=['Classes', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
-        df.plot(x='Classes', kind='bar', stacked=True, title=f'Class distribution ({self.sname})', ylim = (0, total_samples))
+        df.plot(x='Classes', kind='bar', stacked=True, title=f'Class distribution (scenario {self.sname})', ylim = (0, 5000))
         plt.xticks(rotation='horizontal')
         plt.savefig(f"{msglogger.logdir}/p{self.sname}_{epoch}_classesT.pdf", bbox_inches = 'tight')
         plt.savefig(f"{msglogger.logdir}/i{self.sname}_{epoch}_classesT.png", dpi=dpiv, bbox_inches = 'tight')
+
 
         ytfpo_smoothed = []
         for i in range(len(plt_exit_tfpositive[0])):
@@ -692,15 +733,19 @@ class ClassifierCompressor(object):
                 smoother.smooth(ytf)
                 ytfpo_smoothed[i].append(smoother.smooth_data[0][-1])
 
-        # names = np.array([['Exit0'], ['Exit1'], ['Exit2']], dtype=object)
+        
+
+        names = np.array([['Exit0'], ['Exit1'], ['Exit2']], dtype=object)
         ytfpo_smoothed = np.array(ytfpo_smoothed)
 
         ylabel = np.hstack((names, ytfpo_smoothed))
         df = pd.DataFrame(ylabel, columns=['Classes',   '0+', '0-', '1+', '1-', '2+', '2-', '3+', '3-', '4+','4-',
                                                         '5+', '5-', '6+', '6-', '7+', '7-', '8+', '8-', '9+', '9-'])
-        ax = df.plot(   x='Classes', kind='bar', stacked=True, title=f'Class distribution ({self.sname})', 
-                        ylim = (0, total_samples), colormap='tab20', legend=False)
-           
+        ax = df.plot(   x='Classes', kind='bar', stacked=True, title=f'Class distribution (scenario {self.sname})', 
+                        ylim = (0, 5000), colormap='tab20', legend=False)
+        # for i in range (ax.containers[:]):
+        #     ax.containers[i]
+            
         plt.xticks(rotation='horizontal')
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         patterns = itertools.cycle(('', '', '', '////', '////', '////'))
@@ -749,6 +794,8 @@ class ClassifierCompressor(object):
         return test(self.test_loader, self.model, self.criterion,
                     self.pylogger, self.activations_collectors, args=self.args)
 
+
+
 def init_classifier_compression_arg_parser(include_ptq_lapq_args=False):
     '''Common classifier-compression application command-line arguments.
     '''
@@ -767,9 +814,7 @@ def init_classifier_compression_arg_parser(include_ptq_lapq_args=False):
                         help='number of total epochs to run (default: 90')
     parser.add_argument('-b', '--batch-size', default=256, type=int,
                         metavar='N', help='mini-batch size (default: 256)')
-    parser.add_argument('--scenario', type=str, default="")
-    parser.add_argument('--edataset', type=str, default="")
-    parser.add_argument('-lf', '--loss-function', type=str, default="normal")
+    parser.add_argument('--scenario', type=int, metavar='N', default=1)
     optimizer_args = parser.add_argument_group('Optimizer arguments')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
                     type=float, metavar='LR', help='initial learning rate')
@@ -863,7 +908,7 @@ def init_classifier_compression_arg_parser(include_ptq_lapq_args=False):
     return parser
 
 
-def _init_logger(args, script_dir, scene_name):
+def _init_logger(args, script_dir):
     global msglogger
     if script_dir is None or not hasattr(args, "output_dir") or args.output_dir is None:
         msglogger.logdir = None
@@ -871,7 +916,7 @@ def _init_logger(args, script_dir, scene_name):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'),
-                                         f'{args.name}_{scene_name}', args.output_dir, args.verbose)
+                                         args.name + f'_scen{args.scenario}', args.output_dir, args.verbose)
 
     # Log various details about the execution environment.  It is sometimes useful
     # to refer to past experiment executions and this information may be useful.

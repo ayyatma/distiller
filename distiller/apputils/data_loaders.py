@@ -19,6 +19,7 @@
 This code will help with the image classification datasets: ImageNet and CIFAR10
 
 """
+from cgi import test
 import os
 import torch
 import torchvision.transforms as transforms
@@ -27,9 +28,12 @@ from torch.utils.data.sampler import Sampler
 from functools import partial
 import numpy as np
 import distiller
+from torchvision.datasets.utils import download_url
+import tarfile
 
+# from data_loader_imagenette import load_imagenette
 
-DATASETS_NAMES = ['imagenet', 'cifar10', 'mnist']
+DATASETS_NAMES = ['imagenet', 'cifar10', 'mnist', 'fmnist', 'imagenette', 'svhn', 'cifar100']
 
 
 def classification_dataset_str_from_arch(arch):
@@ -45,7 +49,12 @@ def classification_dataset_str_from_arch(arch):
 def classification_num_classes(dataset):
     return {'cifar10': 10,
             'mnist': 10,
-            'imagenet': 1000}.get(dataset, None)
+            'fmnist': 10,
+            'imagenette': 10,
+            'svhn': 10,
+            'cifar100': 100,
+            'imagenet': 1000,
+            'nb15': 9}.get(dataset, None)
 
 
 def classification_get_input_shape(dataset):
@@ -53,15 +62,30 @@ def classification_get_input_shape(dataset):
         return 1, 3, 224, 224
     elif dataset == 'cifar10':
         return 1, 3, 32, 32
+    elif dataset == 'cifar100':
+        return 1, 3, 32, 32
     elif dataset == 'mnist':
         return 1, 1, 28, 28
+    elif dataset == 'fmnist':
+        return 1, 1, 28, 28
+    elif dataset == 'imagenette':
+        return 1, 3, 160, 160
+    elif dataset == 'svhn':
+        return 1, 3, 32, 32
+    elif dataset == 'nb15':
+        return 1, 1, 69
     else:
         raise ValueError("dataset %s is not supported" % dataset)
 
 
 def __dataset_factory(dataset, arch):
     return {'cifar10': cifar10_get_datasets,
+            'cifar100': cifar100_get_datasets,
             'mnist': mnist_get_datasets,
+            'fmnist': fashion_mnist_get_datasets,
+            'imagenette': imagenette_get_datasets,
+            'svhn': svhn_get_datasets,
+            'nb15': nb15_get_datasets,
             'imagenet': partial(imagenet_get_datasets, arch=arch)}.get(dataset, None)
 
 
@@ -123,7 +147,105 @@ def mnist_get_datasets(data_dir, load_train=True, load_test=True):
 
     return train_dataset, test_dataset
 
+def nb15_get_datasets(data_dir, load_train=True, load_test=True):
+    train_dataset = None
+    test_dataset = None
 
+    return train_dataset, test
+def imagenette_get_datasets(data_dir, load_train=True, load_test=True):
+    """Load the MNIST dataset."""
+    train_dataset = None
+    if load_train:
+        # transform = [transforms.Resize((64,64)),transforms.ToTensor()]
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((160,160)),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        train_dataset = load_imagenette(root=data_dir, train=True,
+                                       download=True, transform=train_transform)
+
+    test_dataset = None
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((160,160)),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        test_dataset = load_imagenette(root=data_dir, train=False,
+                                      transform=test_transform)
+
+    return train_dataset, test_dataset
+
+def download_dataset(data_dir):
+    dataset_url = "https://s3.amazonaws.com/fast-ai-imageclas/imagenette2-160.tgz"
+    dataset_name = "imagenette2-160"
+    download_url(dataset_url, data_dir) # '.' here denotes the folder we are in, just as when we working on the terminal
+
+    # Extract from archive
+    with tarfile.open(f'{data_dir}/{dataset_name}' + ".tgz", 'r:gz') as tar:
+        tar.extractall(path=f'{data_dir}/data/')
+    images_dir = f'{data_dir}/data/'+ dataset_name
+    return images_dir
+    
+def load_imagenette(root, train = True, download = True, transform = [transforms.Resize((64,64)),transforms.ToTensor()]):
+    if (download == True):
+        dataset_path = download_dataset(root)
+    if (train == True):
+        dataset = datasets.ImageFolder(dataset_path+'/train', transform=transform)
+    else:
+        dataset = datasets.ImageFolder(dataset_path+'/val', transform=transform)
+
+    dataset.classes = ['tench', 'English springer', 'cassette player', 'chain saw', 'church', 'French horn', 'garbage truck', 'gas pump', 'golf ball', 'parachute']
+    return dataset
+
+def fashion_mnist_get_datasets(data_dir, load_train=True, load_test=True):
+    """Load the FMNIST dataset."""
+    train_dataset = None
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        train_dataset = datasets.FashionMNIST(root=data_dir, train=True,
+                                       download=True, transform=train_transform)
+
+    test_dataset = None
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        test_dataset = datasets.FashionMNIST(root=data_dir, train=False,
+                                      transform=test_transform)
+
+    return train_dataset, test_dataset
+
+def cifar100_get_datasets(data_dir, load_train=True, load_test=True):
+    train_dataset = None
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        train_dataset = datasets.CIFAR100(root=data_dir, train=True,
+                                         download=True, transform=train_transform)
+
+    test_dataset = None
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        test_dataset = datasets.CIFAR100(root=data_dir, train=False,
+                                        download=True, transform=test_transform)
+
+    return train_dataset, test_dataset
+from sklearn.model_selection import train_test_split
 def cifar10_get_datasets(data_dir, load_train=True, load_test=True):
     """Load the CIFAR10 dataset.
 
@@ -142,13 +264,15 @@ def cifar10_get_datasets(data_dir, load_train=True, load_test=True):
     [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
     arXiv:1409.5185, 2014
     """
+
     train_dataset = None
     if load_train:
         train_transform = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ])
 
         train_dataset = datasets.CIFAR10(root=data_dir, train=True,
@@ -158,15 +282,53 @@ def cifar10_get_datasets(data_dir, load_train=True, load_test=True):
     if load_test:
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ])
 
         test_dataset = datasets.CIFAR10(root=data_dir, train=False,
                                         download=True, transform=test_transform)
 
+        targets = np.array(test_dataset.targets)
+        # Create target_indices
+        target_indices = np.arange(len(targets))
+        # Split into train and validation
+        train_idx, val_idx = train_test_split(target_indices, train_size=0.8)
+
+        # Specify which class to remove from train
+        classidx_to_remove = 0
+        # Get indices to keep from train split
+        idx_to_keep = targets[train_idx]!=classidx_to_remove
+        # Only keep your desired classes
+        train_idx = train_idx[idx_to_keep]
     return train_dataset, test_dataset
 
-  
+
+def svhn_get_datasets(data_dir, load_train=True, load_test=True):
+    train_dataset = None
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        train_dataset = datasets.SVHN(root=data_dir, split='train',
+                                         download=True, transform=train_transform)
+
+    test_dataset = None
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+
+        test_dataset = datasets.SVHN(root=data_dir, split='test',
+                                        download=True, transform=test_transform)
+
+    return train_dataset, test_dataset
+
 def imagenet_get_datasets(data_dir, arch, load_train=True, load_test=True):
     """
     Load the ImageNet dataset.
